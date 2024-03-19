@@ -1,2 +1,6 @@
 # RP6502-TextEditor
-An ASCII text editor for the RP6502
+An ASCII text editor for the [Picocomputer 6502](https://picocomputer.github.io/).
+
+<img src="TE.jpg" width="800px"/>
+
+For the BASIC programmers. Enjoy!
