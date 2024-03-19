@@ -1,0 +1,10 @@
+{
+    "cmake.environment": {
+        "PATH": "/home/tonyvr/projects/RP6502/llvm-mos/bin/:${env:PATH}"
+    },
+    "files.associations": {
+        "cstdlib": "cpp",
+        "cstdint": "cpp",
+        "textbox.h": "c"
+    }
+}
