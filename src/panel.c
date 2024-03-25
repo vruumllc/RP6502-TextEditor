@@ -20,6 +20,7 @@ panel_t * NewPanel(popup_type_t type, panel_btn_layout_t button_layout,
                    uint8_t width, uint8_t height,
                    uint8_t bg_color, uint8_t fg_color)
 {
+    uint8_t i;
     panel_t * panel = (panel_t *)malloc(sizeof(panel_t));
     if (panel != NULL) {
         panel->panel_type = type;
@@ -31,7 +32,7 @@ panel_t * NewPanel(popup_type_t type, panel_btn_layout_t button_layout,
         panel->bg = bg_color;
         panel->fg = fg_color;
         panel->num_btns = 0;
-        for (uint8_t i = 0; i < MAX_PANEL_BTNS; i++) {
+        for (i = 0; i < MAX_PANEL_BTNS; i++) {
             panel->btn_addr[i] = NULL;
             panel->action[i] = NULL;
         }
@@ -67,6 +68,7 @@ bool AddButtonToPanel(panel_t * panel, const char *label, int8_t alt_index,
 bool ShowPanel(panel_t * panel, uint8_t row, uint8_t col)
 {
     if (panel != NULL) {
+        uint8_t i, r, c, start;
         if (panel->pstash == NULL &&
             row + panel->h <= canvas_rows() &&
             col + panel->w <= canvas_cols()   ) {
@@ -81,20 +83,19 @@ bool ShowPanel(panel_t * panel, uint8_t row, uint8_t col)
                 BackupChars(panel->r, panel->c, panel->w, panel->h, panel->pstash);
 
                 // draw panel background
-                for (uint8_t i = panel->r; i < panel->r + panel->h; i++) {
-                    for (uint8_t j = panel->c; j < panel->c + panel->w; j++) {
-                        DrawChar(i, j, ' ', panel->bg, panel->fg);
+                for (r = panel->r; r < panel->r + panel->h; r++) {
+                    for (c = panel->c; c < panel->c + panel->w; c++) {
+                        DrawChar(r, c, ' ', panel->bg, panel->fg);
                     }
                 }
 
                 // draw the panel buttons, assuming panel is horizontal or vertical menu
-                uint8_t start = 0;
-                bool retval;
-                for (uint8_t i = 0; i < panel->num_btns; i++) {
+                start = 0;
+                for (i = 0; i < panel->num_btns; i++) {
                     if (panel->btn_layout == VERT) {
-                        retval = ShowButton(panel->btn_addr[i], panel->r+i, panel->c);
+                        ShowButton(panel->btn_addr[i], panel->r+i, panel->c);
                     } else {
-                        retval = ShowButton(panel->btn_addr[i], panel->r, panel->c + start);
+                        ShowButton(panel->btn_addr[i], panel->r, panel->c + start);
                         start += panel->btn_addr[i]->w;
                     }
                 }
@@ -111,10 +112,12 @@ bool ShowPanel(panel_t * panel, uint8_t row, uint8_t col)
 void DeletePanel(panel_t * panel)
 {
     if (panel != NULL) {
+        uint8_t i;
+        textbox_t * txtbox = NULL;
         if (panel->pstash != NULL) {
             RestoreChars(panel->r, panel->c, panel->w, panel->h, panel->pstash);
 
-            for (uint8_t i = 0; i < panel->num_btns; i++) {
+            for (i = 0; i < panel->num_btns; i++) {
                 button_t * btn = panel->btn_addr[i];
                 if (btn != NULL){
                     free(btn);
@@ -129,10 +132,7 @@ void DeletePanel(panel_t * panel)
 
             free(panel);
 
-            textbox_t * txtbox = get_active_textbox();
-            if (txtbox != NULL) {
-                UpdateTextboxFocus(txtbox, true);
-            }
+            UpdateTextboxFocus(true);
 
             return;
         }
@@ -146,11 +146,12 @@ void PanelButtonPressed(panel_t * panel, uint8_t index)
     if (panel != NULL) {
         panel_t * pmain_menu = get_main_menu();
         panel_t * popup = get_popup();
+        popup_type_t popup_type;
         if (popup != NULL) {
             panel->action[index]();
             // make sure we don't hide a dialog box created by menu action
-            popup_type_t type = get_popup_type();
-            if (type == SUBMENU || type == CONTEXTMENU ) {
+            popup_type = get_popup_type();
+            if (popup_type == SUBMENU || popup_type == CONTEXTMENU ) {
                 RemoveFocusFromAllPanelButtons(pmain_menu);
                 DeletePanel(panel);
             }
@@ -164,7 +165,9 @@ void PanelButtonPressed(panel_t * panel, uint8_t index)
 bool IsPanelButtonPressed(panel_t * panel, int16_t row, int16_t col)
 {
     if (panel != NULL) {
-        for (uint8_t i = 0; i < panel->num_btns; i++) {
+        uint8_t i;
+        popup_type_t popup_type;
+        for (i = 0; i < panel->num_btns; i++) {
             button_t * btn = panel->btn_addr[i];
             if (btn != NULL) {
                 if (row == btn->r &&
@@ -175,8 +178,8 @@ bool IsPanelButtonPressed(panel_t * panel, int16_t row, int16_t col)
             }
         }
         // if we clicked with mouse, but not on a button, close popup menus
-        popup_type_t type = get_popup_type();
-        if (type == SUBMENU || type == CONTEXTMENU ) {
+        popup_type = get_popup_type();
+        if (popup_type == SUBMENU || popup_type == CONTEXTMENU ) {
             DeletePanel(panel);
             return true;
         }
@@ -190,7 +193,8 @@ bool IsPanelButtonPressed(panel_t * panel, int16_t row, int16_t col)
 void SetFocusToPanelButton(panel_t * panel, int16_t row, int16_t col)
 {
     if (panel != NULL) {
-        for (uint8_t i = 0; i < panel->num_btns; i++) {
+        uint8_t i;
+        for (i = 0; i < panel->num_btns; i++) {
             button_t * btn = panel->btn_addr[i];
             if (btn != NULL) {
                 if (row == btn->r &&
@@ -213,8 +217,9 @@ void SetFocusToPanelButton(panel_t * panel, int16_t row, int16_t col)
 void RemoveFocusFromAllPanelButtons(panel_t * panel)
 {
     if (panel != NULL) {
-        for (uint8_t j = 0; j < panel->num_btns; j++) {
-            button_t * btn = panel->btn_addr[j];
+        uint8_t i;
+        for (i = 0; i < panel->num_btns; i++) {
+            button_t * btn = panel->btn_addr[i];
             if (btn != NULL) {
                 if (btn->in_focus) {
                     UpdateButtonFocus(btn, false);

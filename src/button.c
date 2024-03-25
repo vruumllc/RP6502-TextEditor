@@ -16,20 +16,19 @@
 static void DrawButton(button_t * btn)
 {
     if (btn != NULL) {
+        uint8_t c, n, start, len;
         // draw button background
-        for (uint8_t j = btn->c; j < btn->c + btn->w; j++) {
-            DrawChar(btn->r, j, ' ',
+        for (c = btn->c; c < btn->c + btn->w; c++) {
+            DrawChar(btn->r, c, ' ',
                         btn->in_focus ? btn->focus_bg : btn->bg,
                         btn->in_focus ? btn->focus_fg : btn->fg);
         }
-
-
         // draw the button label
-        uint8_t len  = strlen(btn->btn_lbl);
-        uint16_t start = btn->c + 1;
-        uint8_t n = 0;
-        for (uint8_t j = start; j < (start + len); j++) {
-            DrawChar(btn->r, j, btn->btn_lbl[n++],
+        len  = strlen(btn->btn_lbl);
+        start = btn->c + 1;
+        n = 0;
+        for (c = start; c < (start + len); c++) {
+            DrawChar(btn->r, c, btn->btn_lbl[n++],
                      btn->in_focus ? btn->focus_bg : btn->bg,
                      btn->in_focus ? btn->focus_fg : btn->fg);
         }

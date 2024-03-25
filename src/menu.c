@@ -26,6 +26,7 @@ static panel_t MainMenuPanel;
 bool InitMainMenu(void)
 {
     if (get_main_menu() == NULL) {
+        uint8_t i, c, start;
         // Init Main Menu panel parameters
         MainMenuPanel.panel_type = NO_POPUP_TYPE;
         MainMenuPanel.r = 0;
@@ -47,13 +48,13 @@ bool InitMainMenu(void)
         }
 
         // draw Main Menu background
-        for (uint8_t i = 0; i < canvas_cols(); i++) {
-            DrawChar(0, i, ' ', MainMenuPanel.bg, MainMenuPanel.fg);
+        for (c = 0; c < canvas_cols(); c++) {
+            DrawChar(0, c, ' ', MainMenuPanel.bg, MainMenuPanel.fg);
         }
 
         // draw the buttons
-        uint8_t start = 0;
-        for (uint8_t i = 0; i < MainMenuPanel.num_btns; i++) {
+        start = 0;
+        for (i = 0; i < MainMenuPanel.num_btns; i++) {
             ShowButton(MainMenuPanel.btn_addr[i], MainMenuPanel.r, MainMenuPanel.c + start);
             start += MainMenuPanel.btn_addr[i]->w;
         }
@@ -162,7 +163,7 @@ void ShowFileSubmenu(void)
     if (InitFileSubmenu()) {
         set_popup(FileSubmenu);
         set_popup_type(SUBMENU);
-        DisableBlinking();
+        UpdateTextboxFocus(false);
         UpdateButtonFocus(FileSubmenu->btn_addr[0], true);
         ShowPanel(FileSubmenu, 1, 1);
     }
@@ -176,7 +177,7 @@ void ShowEditSubmenu(void)
     if (InitEditSubmenu()) {
         set_popup(EditSubmenu);
         set_popup_type(SUBMENU);
-        DisableBlinking();
+        UpdateTextboxFocus(false);
         UpdateButtonFocus(EditSubmenu->btn_addr[0], true);
         ShowPanel(EditSubmenu, 1, 8);
     }
@@ -190,7 +191,7 @@ void ShowHelpSubmenu(void)
     if (InitHelpSubmenu()) {
         set_popup(HelpSubmenu);
         set_popup_type(SUBMENU);
-        DisableBlinking();
+        UpdateTextboxFocus(false);
         UpdateButtonFocus(HelpSubmenu->btn_addr[0], true);
         ShowPanel(HelpSubmenu, 1, 8/*13*/);
     }
@@ -212,7 +213,8 @@ void MainMenuButtonPressed(uint8_t index)
 // ----------------------------------------------------------------------------
 bool IsMainMenuButtonPressed(int16_t row, int16_t col)
 {
-    for (uint8_t i = 0; i < MainMenuPanel.num_btns; i++) {
+    uint8_t i;
+    for (i = 0; i < MainMenuPanel.num_btns; i++) {
         button_t * btn = MainMenuPanel.btn_addr[i];
         if (btn != NULL) {
             if (row == btn->r &&
@@ -229,7 +231,8 @@ bool IsMainMenuButtonPressed(int16_t row, int16_t col)
 // ---------------------------------------------------------------------------
 uint8_t SubmenuShowing(void)
 {
-    for (uint8_t i = 0; i < MainMenuPanel.num_btns; i++) {
+    uint8_t i;
+    for (i = 0; i < MainMenuPanel.num_btns; i++) {
         if (MainMenuPanel.btn_addr[i]->in_focus) {
             return i+1;
         }

@@ -9,10 +9,8 @@
 #include <stdbool.h>
 
 void FileOpen(void);
-void OpenFile(void);
 void FileSave(void);
 void FileSaveAs(void);
-void SaveFileAs(void);
 void FileClose(void);
 
 void FileExit(void);
@@ -25,7 +23,5 @@ void EditFind(void);
 void EditReplace(void);
 */
 void HelpAbout(void);
-
-void NOP(void);
 
 #endif // ACTIONS_H

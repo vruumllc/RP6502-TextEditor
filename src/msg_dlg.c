@@ -22,6 +22,7 @@ msg_dlg_t * NewMsgDlg(char * msg, msg_dlg_type_t type,
                       panel_btn_action Cancel)
 {
     bool retval = false;
+    uint8_t i, len_msg, len_btns;
     msg_dlg_t * pmsg_dlg = (msg_dlg_t *)malloc(sizeof(msg_dlg_t));
     if (pmsg_dlg != NULL) {
         pmsg_dlg->msg_dlg_type = type;
@@ -31,7 +32,7 @@ msg_dlg_t * NewMsgDlg(char * msg, msg_dlg_type_t type,
         } else {
             memset(pmsg_dlg->dlg_msg, 0, MAX_MSG_LEN+1);
         }
-        uint8_t len_msg = strlen(msg) + 2;
+        len_msg = strlen(msg) + 2;
 
         pmsg_dlg->panel.panel_type = MSGDIALOG;
         pmsg_dlg->panel.btn_layout = HORZ;
@@ -40,13 +41,13 @@ msg_dlg_t * NewMsgDlg(char * msg, msg_dlg_type_t type,
         pmsg_dlg->panel.bg = LIGHT_GRAY;
         pmsg_dlg->panel.fg = BLACK;
         pmsg_dlg->panel.num_btns = 0;
-        for (uint8_t i = 0; i < MAX_PANEL_BTNS; i++) {
+        for (i = 0; i < MAX_PANEL_BTNS; i++) {
             pmsg_dlg->panel.btn_addr[i] = NULL;
             pmsg_dlg->panel.action[i] = NULL;
         }
         pmsg_dlg->panel.pstash = NULL;
 
-        uint8_t len_btns = 0;
+        len_btns = 0;
         if (pmsg_dlg->msg_dlg_type == OK) {
             // 2 for dialog margin, 2 for button margins
             len_btns = strlen("OK") + 2 + 2;
@@ -98,31 +99,31 @@ bool ShowMsgDlg(msg_dlg_t * pmsg_dlg, uint8_t row, uint8_t col)
         if (pmsg_dlg->panel.pstash == NULL &&
             row + pmsg_dlg->panel.h < canvas_rows() &&
             col + pmsg_dlg->panel.w < canvas_cols()   ) {
-
+            uint16_t bytes;
             pmsg_dlg->panel.r = row;
             pmsg_dlg->panel.c = col;
-
             // backup display covered by panel (4bpp takes 2 bytes each char)
-            uint16_t bytes = pmsg_dlg->panel.w*pmsg_dlg->panel.h*2;
+            bytes = pmsg_dlg->panel.w*pmsg_dlg->panel.h*2;
             pmsg_dlg->panel.pstash = (uint8_t *)malloc(bytes);
             if (pmsg_dlg->panel.pstash != NULL) {
+                int8_t i, r, c, start, len;
+                bool succeeded = false;
                 memset(pmsg_dlg->panel.pstash, 0, pmsg_dlg->panel.w*pmsg_dlg->panel.h*2);
                 BackupChars(pmsg_dlg->panel.r, pmsg_dlg->panel.c, pmsg_dlg->panel.w, pmsg_dlg->panel.h, pmsg_dlg->panel.pstash);
                 // draw panel background
-                for (uint8_t i = pmsg_dlg->panel.r; i < pmsg_dlg->panel.r + pmsg_dlg->panel.h; i++) {
-                    for (uint8_t j = pmsg_dlg->panel.c; j < pmsg_dlg->panel.c + pmsg_dlg->panel.w; j++) {
-                        DrawChar(i, j, ' ', pmsg_dlg->panel.bg, pmsg_dlg->panel.fg);
+                for (r = pmsg_dlg->panel.r; r < pmsg_dlg->panel.r + pmsg_dlg->panel.h; r++) {
+                    for (c = pmsg_dlg->panel.c; c < pmsg_dlg->panel.c + pmsg_dlg->panel.w; c++) {
+                        DrawChar(r, c, ' ', pmsg_dlg->panel.bg, pmsg_dlg->panel.fg);
                     }
                 }
                 // draw the dialog message
-                uint8_t len  = strlen(pmsg_dlg->dlg_msg);
-                uint16_t start = pmsg_dlg->panel.c + (pmsg_dlg->panel.w - len)/2;
-                uint8_t i = 0;
-                for (uint8_t j = start; j < (start + len); j++) {
-                    DrawChar(pmsg_dlg->panel.r + 1, j, pmsg_dlg->dlg_msg[i++], pmsg_dlg->panel.bg, pmsg_dlg->panel.fg);
+                len  = strlen(pmsg_dlg->dlg_msg);
+                start = pmsg_dlg->panel.c + (pmsg_dlg->panel.w - len)/2;
+                i = 0;
+                for (c = start; c < (start + len); c++) {
+                    DrawChar(pmsg_dlg->panel.r + 1, c, pmsg_dlg->dlg_msg[i++], pmsg_dlg->panel.bg, pmsg_dlg->panel.fg);
                 }
                 // show the buttons
-                bool succeeded = false;
                 if (pmsg_dlg->msg_dlg_type == OK) {
                     if (pmsg_dlg->panel.btn_addr[0] != NULL) {
                         UpdateButtonFocus(pmsg_dlg->panel.btn_addr[0], true);
@@ -171,13 +172,15 @@ bool ShowMsgDlg(msg_dlg_t * pmsg_dlg, uint8_t row, uint8_t col)
 void DeleteMsgDlg(msg_dlg_t * pmsg_dlg)
 {
     if (pmsg_dlg != NULL) {
+        uint8_t i;
+        textbox_t * txtbox = NULL;
         if (pmsg_dlg->panel.pstash != NULL) {
             RestoreChars(pmsg_dlg->panel.r, pmsg_dlg->panel.c, pmsg_dlg->panel.w, pmsg_dlg->panel.h, pmsg_dlg->panel.pstash);
 
             free(pmsg_dlg->panel.pstash);
             pmsg_dlg->panel.pstash = NULL;
         }
-        for (uint8_t i = 0; i < pmsg_dlg->panel.num_btns; i++) {
+        for (i = 0; i < pmsg_dlg->panel.num_btns; i++) {
             button_t * btn = pmsg_dlg->panel.btn_addr[i];
             if (btn != NULL){
                 free(btn);
@@ -189,10 +192,7 @@ void DeleteMsgDlg(msg_dlg_t * pmsg_dlg)
 
         free(pmsg_dlg);
 
-        textbox_t * txtbox = get_active_textbox();
-        if (txtbox != NULL) {
-            UpdateTextboxFocus(txtbox, true);
-        }
+        UpdateTextboxFocus(true);
 
         return;
     } // bad parameter
@@ -233,7 +233,8 @@ void MsgDlgButtonPressed(msg_dlg_t * pmsg_dlg, uint8_t index)
 bool IsMsgDlgButtonPressed(msg_dlg_t * pmsg_dlg, int16_t row, int16_t col)
 {
     if (pmsg_dlg != NULL) {
-        for (uint8_t i = 0; i < pmsg_dlg->panel.num_btns; i++) {
+        uint8_t i;
+        for (i = 0; i < pmsg_dlg->panel.num_btns; i++) {
             button_t * btn = pmsg_dlg->panel.btn_addr[i];
             if (btn != NULL) {
                 if (row == btn->r &&

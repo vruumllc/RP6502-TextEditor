@@ -7,18 +7,16 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "textbox.h"
+#include "doc.h"
 #include "panel.h"
 
 #define MAX_FILE_DLG_MSG_LEN 80
-#define TXTBOX_WIDTH 31
 
 typedef enum {INVALID_FILE_DLG_TYPE, OPEN, SAVE} file_dlg_type_t;
 
 typedef struct file_dlg {
     file_dlg_type_t file_dlg_type;
     char dlg_msg[MAX_FILE_DLG_MSG_LEN+1];
-    textbox_t * ptxtbox;
     panel_t panel;
 } file_dlg_t;
 
@@ -30,6 +28,7 @@ bool ShowFileDlg(file_dlg_t * pfile_dlg, uint8_t row, uint8_t col);
 void FileDlgButtonPressed(file_dlg_t * pfile_dlg, uint8_t index);
 bool IsFileDlgButtonPressed(file_dlg_t * pfile_dlg, int16_t row, int16_t col);
 
-doc_t * GetDoc(file_dlg_t * pfile_dlg);
+void AddCharToFilename(char chr);
+void DeleteCharFromFilename(void);
 
 #endif // FILE_DLG_H

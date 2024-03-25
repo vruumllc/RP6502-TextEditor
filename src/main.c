@@ -9,14 +9,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include "ezpsg.h"
+#include "doc.h"
 #include "display.h"
 #include "textbox.h"
 #include "statusbar.h"
 #include "menu.h"
 #include "keyboard.h"
 #include "mouse.h"
-
-static textbox_t * p_main_txtbox = NULL;
 
 // canvas_data = 0x0000 to 0x12BF (display.c)
 // DOC buffers = 0x1300 to 0xEF4F (doc.h)
@@ -27,18 +26,6 @@ static textbox_t * p_main_txtbox = NULL;
 // mouse_state = 0xFF40 to 0xFF44 (mouse.c)
 // mouse_struct = 0xFF50 to 0xFF5F (mouse.c)
 
-// ---------------------------------------------------------------------------
-// ---------------------------------------------------------------------------
-static bool InitMainTextbox(void)
-{
-    p_main_txtbox = NewTextbox(DOC_COLS, canvas_rows()-2, BLACK, LIGHT_GRAY);
-    if (p_main_txtbox != NULL) {
-        set_active_textbox(p_main_txtbox);
-        ShowTextbox(p_main_txtbox,  1, 0);
-        UpdateTextboxFocus(p_main_txtbox, true);
-    }
-    return (p_main_txtbox != NULL);
-}
 
 // ---------------------------------------------------------------------------
 // ---------------------------------------------------------------------------
@@ -47,13 +34,12 @@ int main(void)
     uint8_t v; // vsync counter, incements every 1/60 second, rolls over every 256
 
     ezpsg_init(MUSIC_CONFIG);
-
     InitDisplay();
     InitStatusBar();
+    InitTextbox();
     InitKeyboard();
     InitMouse();
-    if (InitMainMenu() &&
-        InitMainTextbox() ) {
+    if (InitMainMenu()) {
         // vsync loop
         v = RIA.vsync;
         while(true) {
@@ -71,13 +57,10 @@ int main(void)
                 UpdateStatusBarMsg("", STATUS_INFO); // resets timer, too
             }
 
-            UpdateActiveTextbox();
+            UpdateTextbox();
 
             // break out of loop if something returns false
             if (!HandleKeys() || !HandleMouse()) {
-                if (p_main_txtbox != NULL) {
-                    DeleteTextbox(p_main_txtbox);
-                }
                 break;
             }
         }

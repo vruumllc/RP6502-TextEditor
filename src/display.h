@@ -31,12 +31,6 @@ uint8_t font_height(void);
 void * get_main_menu(void); // NULL, unless Main Menu is shown
 void set_main_menu(void * pmain_menu);
 
-void * get_active_textbox(void); // NULL, unless Main Menu is shown
-void set_active_textbox(void * ptxtbox);
-
-void * get_status_bar(void); // NULL, unless Main Menu is shown
-void set_status_bar(void * pstatus_bar);
-
 void * get_popup(void); // NULL, unless popup is overlapping display
 void set_popup(void * popup);
 

@@ -20,7 +20,7 @@
 #include "keyboard.h"
 
 static const uint16_t keybd_status = 0xFF20; // to 0xFF3F, for KEYBOARD_BYTES (32) of bitmask data
-static const uint8_t key_repeat_delay = 2; // * 1/60 second, approx
+static const uint8_t key_repeat_delay = 2; // * 1/30 second, approx
 static const uint8_t initial_delay = 45; // number of key_repeat_delays to wait before repeating
 
 // 256 HID keys max, stored in 32 x uint8_t
@@ -81,7 +81,7 @@ static const char shifted[][2] = {{'a','A'}, // 4 = 0x04 (KEY_A)
                                   {'9','('},
                                   {'0',')'}, // 39 = 0x27 (KEY_0)
                                   {'\n','\n'}, // 40 = 0x28 (KEY_ENTER)
-                                  {'\e','\e'}, // 41 = 0x29 (KEY_ESC)
+                                  {0,0}, //{'\e','\e'}, // 41 = 0x29 (KEY_ESC)
                                   {'\b','\b'}, // 42 = 0x2a (KEY_BACKSPACE)
                                   {'\t','\t'}, // 43 = 0x2b (KEY_TAB)
                                   {' ',' '}, // 44 = 0x2c (KEY_SPACE)
@@ -216,8 +216,10 @@ static char HID2ASCII(uint8_t key_modes, uint8_t key)
 static bool ProcessKeysInPopup(panel_t * popup, popup_type_t popup_type,
                                uint8_t key_modes, uint8_t key)
 {
+    uint8_t i;
     bool retval = true;
     panel_t * main_menu = get_main_menu();
+    textbox_t * txtbox = GetTextbox();
 
     // If submenu is open, can select submenu item using high-lighted letter
     if (SubmenuShowing() == 1) { // File
@@ -265,7 +267,7 @@ static bool ProcessKeysInPopup(panel_t * popup, popup_type_t popup_type,
 
     if (key == KEY_UP || (key == KEY_KP8 && !(key_modes & NUMLK_MASK))) {
         if (popup->btn_layout == VERT) {
-            for (uint8_t i = 1; i < popup->num_btns; i++) {
+            for (i = 1; i < popup->num_btns; i++) {
                 button_t * btn = popup->btn_addr[i];
                 if (btn != NULL && btn->in_focus) {
                     UpdateButtonFocus(btn, false);
@@ -276,7 +278,7 @@ static bool ProcessKeysInPopup(panel_t * popup, popup_type_t popup_type,
         }
     } else if (key == KEY_DOWN || (key == KEY_KP2 && !(key_modes & NUMLK_MASK))) {
         if  (popup->btn_layout == VERT) {
-            for (uint8_t i = 0; i < popup->num_btns-1; i++) {
+            for (i = 0; i < popup->num_btns-1; i++) {
                 button_t * btn = popup->btn_addr[i];
                 if (btn != NULL && btn->in_focus) {
                     UpdateButtonFocus(btn, false);
@@ -287,7 +289,7 @@ static bool ProcessKeysInPopup(panel_t * popup, popup_type_t popup_type,
         }
     } else if (key == KEY_LEFT || (key == KEY_KP4 && !(key_modes & NUMLK_MASK))) {
         if (popup->btn_layout == HORZ) {
-            for (uint8_t i = 1; i < popup->num_btns; i++) {
+            for (i = 1; i < popup->num_btns; i++) {
                 button_t * btn = popup->btn_addr[i];
                 if (btn != NULL && btn->in_focus) {
                     UpdateButtonFocus(btn, false);
@@ -298,7 +300,7 @@ static bool ProcessKeysInPopup(panel_t * popup, popup_type_t popup_type,
         }
     } else if (key == KEY_RIGHT || (key == KEY_KP6 && !(key_modes & NUMLK_MASK))) {
         if (popup->btn_layout == HORZ) {
-            for (uint8_t i = 0; i < popup->num_btns-1; i++) {
+            for (i = 0; i < popup->num_btns-1; i++) {
                 button_t * btn = popup->btn_addr[i];
                 if (btn != NULL &&btn->in_focus) {
                     UpdateButtonFocus(btn, false);
@@ -309,19 +311,18 @@ static bool ProcessKeysInPopup(panel_t * popup, popup_type_t popup_type,
         }
     } else if (key == KEY_TAB) {
         if (popup_type == FILEDIALOG) {
-            textbox_t * txtbox = get_active_textbox();
             if (txtbox->in_focus) {
-                UpdateTextboxFocus(txtbox, false);
+                UpdateTextboxFocus(false);
                 UpdateButtonFocus(popup->btn_addr[0], true);
             } else {
-                for (uint8_t i = 0; i < MAX_PANEL_BTNS-1; i++) {
+                for (i = 0; i < MAX_PANEL_BTNS-1; i++) {
                     button_t * btn = popup->btn_addr[i];
                     button_t * next_btn = popup->btn_addr[i+1];
                     if (btn != NULL) {
                         if (btn->in_focus) {
                             UpdateButtonFocus(btn, false);
                             if (next_btn == NULL) {
-                                UpdateTextboxFocus(txtbox, true);
+                                UpdateTextboxFocus(true);
                             } else {
                                 UpdateButtonFocus(next_btn, true);
                             }
@@ -331,7 +332,7 @@ static bool ProcessKeysInPopup(panel_t * popup, popup_type_t popup_type,
                 }
             }
         } else {
-            for (uint8_t i = 0; i < MAX_PANEL_BTNS-1; i++) {
+            for (i = 0; i < MAX_PANEL_BTNS-1; i++) {
                 button_t * btn = popup->btn_addr[i];
                 button_t * next_btn = popup->btn_addr[i+1];
                 if (btn != NULL) {
@@ -347,7 +348,7 @@ static bool ProcessKeysInPopup(panel_t * popup, popup_type_t popup_type,
             }
         }
     } else if (key == KEY_ENTER || key == KEY_KPENTER) {
-        for (uint8_t i = 0; i < popup->num_btns; i++) {
+        for (i = 0; i < popup->num_btns; i++) {
             button_t * btn = popup->btn_addr[i];
             if (btn != NULL && btn->in_focus) {
                 if (popup_type == SUBMENU) {
@@ -366,19 +367,12 @@ static bool ProcessKeysInPopup(panel_t * popup, popup_type_t popup_type,
                 RemoveFocusFromAllPanelButtons(main_menu);
                 DeletePanel(popup);
         }
-    } else if (popup_type == FILEDIALOG) {
-        textbox_t * txtbox = get_active_textbox();
-        if (txtbox != NULL && txtbox->in_focus) {
-            if (key == KEY_BACKSPACE || key == KEY_DELETE
-                                     || (key == KEY_KPDOT && !(key_modes & NUMLK_MASK))) {
-                DeleteChar(&txtbox->doc, (key == KEY_BACKSPACE));
-            } else {
-                if (txtbox->doc.cursor_c + 1 < TXTBOX_WIDTH) { // room to move right?
-                    AddChar(&txtbox->doc,  HID2ASCII(key_modes, key), !(key_modes & OVRWRT_MASK), txtbox->w);
-                } else {
-                    UpdateStatusBarMsg("Maximum line length exceeded!", STATUS_WARNING);
-                }
-            }
+    } else if (popup_type == FILEDIALOG && txtbox->in_focus) {
+        if (key == KEY_BACKSPACE || key == KEY_DELETE
+                                    || (key == KEY_KPDOT && !(key_modes & NUMLK_MASK))) {
+            DeleteCharFromFilename();
+        } else {
+            AddCharToFilename(HID2ASCII(key_modes, key));
         }
     }
     return retval;
@@ -386,11 +380,14 @@ static bool ProcessKeysInPopup(panel_t * popup, popup_type_t popup_type,
 
 // ----------------------------------------------------------------------------
 // ----------------------------------------------------------------------------
-static bool ProcessKeysInMainTextbox(textbox_t * txtbox, uint8_t key_modes, uint8_t key)
+static bool ProcessKeysInMainTextbox(uint8_t key_modes, uint8_t key)
 {
+    uint16_t r;
+    uint8_t i, n;
     bool retval = true;
+    doc_t * doc = GetDoc();
+    textbox_t * txtbox = GetTextbox();
     panel_t * main_menu = get_main_menu();
-
     if ((key_modes & CTRL_MASK)>0) { // Can use Ctrl+... accelerator keys
         if (key == KEY_O) { // File 'O'pen
             FileOpen();
@@ -431,105 +428,104 @@ static bool ProcessKeysInMainTextbox(textbox_t * txtbox, uint8_t key_modes, uint
             ShowHelpSubmenu();
         }
     } else if (key == KEY_UP || (key == KEY_KP8 && !(key_modes & NUMLK_MASK))) {
-        if (txtbox->doc.cursor_r > 0) { // room to move up
+        if (doc->cursor_r > 0) { // room to move up
             // if the cursor is at top of display, scroll by adjusting doc offset
-            if (txtbox->doc.cursor_r-1 < txtbox->doc.offset_r) {
-                for (uint16_t r = txtbox->doc.cursor_r-1;
-                              r < txtbox->doc.cursor_r+txtbox->h-1; r++) {
-                    txtbox->doc.rows[r].dirty = true;
+            if (doc->cursor_r-1 < doc->offset_r) {
+                for (r = doc->cursor_r-1; r < doc->cursor_r+txtbox->h-1; r++) {
+                    doc->rows[r].dirty = true;
                 }
-                txtbox->doc.offset_r--;
+                doc->offset_r--;
             }
-            txtbox->doc.cursor_r -= 1;
+            doc->cursor_r -= 1;
             // if cursor is beyond  new row's length, move it left appropriately
-            if (txtbox->doc.cursor_c > txtbox->doc.rows[txtbox->doc.cursor_r].len) {
-                txtbox->doc.cursor_c = txtbox->doc.rows[txtbox->doc.cursor_r].len;
+            if (doc->cursor_c > doc->rows[doc->cursor_r].len) {
+                doc->cursor_c = doc->rows[doc->cursor_r].len;
             }
             UpdateCursor();
         }
     } else if (key == KEY_DOWN || (key == KEY_KP2 && !(key_modes & NUMLK_MASK))) {
-        if (txtbox->doc.cursor_r < txtbox->doc.last_row) { // room to move down
+        if (doc->cursor_r < doc->last_row) { // room to move down
             // if the cursor is at bottom of display, scroll by adjusting doc offset
-            if (txtbox->doc.cursor_r+1 > txtbox->h-1+txtbox->doc.offset_r) {
-                for (uint16_t r = txtbox->doc.cursor_r - txtbox->h + 1;
-                              r < txtbox->doc.cursor_r+2; r++) {
-                    txtbox->doc.rows[r].dirty = true;
+            if (doc->cursor_r+1 > txtbox->h-1+doc->offset_r) {
+                for (r = doc->cursor_r - txtbox->h + 1; r < doc->cursor_r+2; r++) {
+                    doc->rows[r].dirty = true;
                 }
-                txtbox->doc.offset_r++;
+                doc->offset_r++;
             }
-            txtbox->doc.cursor_r += 1;
+            doc->cursor_r += 1;
             // if cursor is beyond  new row's length, move it left appropriately
-            if (txtbox->doc.cursor_c > txtbox->doc.rows[txtbox->doc.cursor_r].len) {
-                txtbox->doc.cursor_c = txtbox->doc.rows[txtbox->doc.cursor_r].len;
+            if (doc->cursor_c > doc->rows[doc->cursor_r].len) {
+                doc->cursor_c = doc->rows[doc->cursor_r].len;
             }
             UpdateCursor();
         }
     } else if (key == KEY_LEFT || (key == KEY_KP4 && !(key_modes & NUMLK_MASK))) {
-        if (txtbox->doc.cursor_c > 0) { // room to move left
-            txtbox->doc.cursor_c -= 1;
+        if (doc->cursor_c > 0) { // room to move left
+            doc->cursor_c -= 1;
             UpdateCursor();
         }
     } else if (key == KEY_RIGHT || (key == KEY_KP6 && !(key_modes & NUMLK_MASK))) {
-        if (txtbox->doc.cursor_c < txtbox->doc.rows[txtbox->doc.cursor_r].len) { // room to move right
-            txtbox->doc.cursor_c += 1;
+        if (doc->cursor_c < doc->rows[doc->cursor_r].len) { // room to move right
+            doc->cursor_c += 1;
             UpdateCursor();
         }
     } else if (key == KEY_HOME || (key == KEY_KP7 && !(key_modes & NUMLK_MASK))) {
-        txtbox->doc.cursor_c = 0;
+        doc->cursor_c = 0;
         UpdateCursor();
     } else if (key == KEY_END || (key == KEY_KP1 && !(key_modes & NUMLK_MASK))) {
-        txtbox->doc.cursor_c = txtbox->doc.rows[txtbox->doc.cursor_r].len;
+        doc->cursor_c = doc->rows[doc->cursor_r].len;
         UpdateCursor();
     } else if (key == KEY_PAGEUP || (key == KEY_KP9 && !(key_modes & NUMLK_MASK))) {
-        uint16_t old_offset = txtbox->doc.offset_r;
-        int16_t new_cursor_r = (int16_t)txtbox->doc.cursor_r - (int16_t)(txtbox->h-1);
+        uint16_t old_offset = doc->offset_r;
+        int16_t new_cursor_r = (int16_t)doc->cursor_r - (int16_t)(txtbox->h-1);
         new_cursor_r = (new_cursor_r >= 0) ? new_cursor_r : 0;
-        if (txtbox->doc.offset_r == 0 ||
+        if (doc->offset_r == 0 ||
             new_cursor_r == 0 ||
-            txtbox->doc.offset_r == new_cursor_r ) {
-            txtbox->doc.cursor_r = new_cursor_r;
-            txtbox->doc.offset_r = new_cursor_r;
+            doc->offset_r == new_cursor_r ) {
+            doc->cursor_r = new_cursor_r;
+            doc->offset_r = new_cursor_r;
         } else { // shift offset a full screen height
-            txtbox->doc.cursor_r = new_cursor_r;
-            txtbox->doc.offset_r -= (txtbox->h-1);
+            doc->cursor_r = new_cursor_r;
+            doc->offset_r -= (txtbox->h-1);
         }
-        for (uint16_t r = txtbox->doc.offset_r; r < old_offset + txtbox->h; r++) {
-            txtbox->doc.rows[r].dirty = true;
+        for (r = doc->offset_r; r < old_offset + txtbox->h; r++) {
+            doc->rows[r].dirty = true;
         }
         // if cursor is beyond  new row's length, move it left appropriately
-        if (txtbox->doc.cursor_c > txtbox->doc.rows[txtbox->doc.cursor_r].len) {
-            txtbox->doc.cursor_c = txtbox->doc.rows[txtbox->doc.cursor_r].len;
+        if (doc->cursor_c > doc->rows[doc->cursor_r].len) {
+            doc->cursor_c = doc->rows[doc->cursor_r].len;
         }
         UpdateCursor();
     } else if (key == KEY_PAGEDOWN || (key == KEY_KP3 && !(key_modes & NUMLK_MASK))) {
-        uint16_t old_offset = txtbox->doc.offset_r;
-        uint16_t old_offset_to_bottom = txtbox->doc.offset_r + (txtbox->h-1);
-        uint16_t new_cursor_r = txtbox->doc.cursor_r + (txtbox->h-1);
-        new_cursor_r = (new_cursor_r < txtbox->doc.last_row) ? new_cursor_r : txtbox->doc.last_row;
+        uint16_t max_dirty;
+        uint16_t old_offset = doc->offset_r;
+        uint16_t old_offset_to_bottom = doc->offset_r + (txtbox->h-1);
+        uint16_t new_cursor_r = doc->cursor_r + (txtbox->h-1);
+        new_cursor_r = (new_cursor_r < doc->last_row) ? new_cursor_r : doc->last_row;
         new_cursor_r = (new_cursor_r < DOC_ROWS-1) ? new_cursor_r : DOC_ROWS-1;
         if (old_offset_to_bottom >= new_cursor_r)  { // no scroll
-            txtbox->doc.cursor_r = new_cursor_r;
+            doc->cursor_r = new_cursor_r;
         } else { // shift offset a full screen height
-            txtbox->doc.cursor_r = new_cursor_r;
-            txtbox->doc.offset_r += (txtbox->h-1);
+            doc->cursor_r = new_cursor_r;
+            doc->offset_r += (txtbox->h-1);
         }
-        uint16_t max_dirty = (old_offset_to_bottom + (txtbox->h-1) <= DOC_ROWS - 1) ?
-                              old_offset_to_bottom + (txtbox->h-1) : DOC_ROWS - 1;
-        for (uint16_t r = old_offset; r < max_dirty; r++) {
-            txtbox->doc.rows[r].dirty = true;
+        max_dirty = (old_offset_to_bottom + (txtbox->h-1) <= DOC_ROWS - 1) ?
+                     old_offset_to_bottom + (txtbox->h-1) : DOC_ROWS - 1;
+        for (r = old_offset; r < max_dirty; r++) {
+            doc->rows[r].dirty = true;
         }
         // if cursor is beyond  new row's length, move it left appropriately
-        if (txtbox->doc.cursor_c > txtbox->doc.rows[txtbox->doc.cursor_r].len) {
-            txtbox->doc.cursor_c = txtbox->doc.rows[txtbox->doc.cursor_r].len;
+        if (doc->cursor_c > doc->rows[doc->cursor_r].len) {
+            doc->cursor_c = doc->rows[doc->cursor_r].len;
         }
         UpdateCursor();
     } else if (key == KEY_TAB) {
         if ((key_modes & OVRWRT_MASK)==0) { // insert mode only
             if ((key_modes & SHIFT_MASK) == 0) { // shift right
-                uint8_t n = TABSIZE - txtbox->doc.cursor_c % TABSIZE;
-                if (txtbox->doc.cursor_c + n < DOC_COLS) { // room to move right?
-                    for (uint8_t i = 0; i < n; i++) {
-                        AddChar(&txtbox->doc,  HID2ASCII(key_modes, KEY_SPACE), true, txtbox->w);
+                n = TABSIZE - doc->cursor_c % TABSIZE;
+                if (doc->rows[doc->cursor_r].len+n < DOC_COLS) { // room to move right?
+                    for (i = 0; i < n; i++) {
+                        AddChar(HID2ASCII(key_modes, KEY_SPACE), true);
                     }
                 } else {
                     UpdateStatusBarMsg("Maximum line length exceeded!", STATUS_WARNING);
@@ -539,15 +535,16 @@ static bool ProcessKeysInMainTextbox(textbox_t * txtbox, uint8_t key_modes, uint
             }
         }
     } else if (key == KEY_ENTER || key == KEY_KPENTER) {
-        AddNewLine(&txtbox->doc);
+        AddNewLine();
     } else if (key == KEY_ESC) {
         // no action?
     } else if (key == KEY_BACKSPACE || key == KEY_DELETE
                                     || (key == KEY_KPDOT && !(key_modes & NUMLK_MASK))) {
-        DeleteChar(&txtbox->doc, (key == KEY_BACKSPACE));
+        DeleteChar(key == KEY_BACKSPACE);
     } else {
-        if (txtbox->doc.cursor_c + 1 < DOC_COLS) { // room to move right?
-            AddChar(&txtbox->doc,  HID2ASCII(key_modes, key), !(key_modes & OVRWRT_MASK), txtbox->w);
+        if (((key_modes & OVRWRT_MASK) && doc->cursor_c < DOC_COLS-1) ||
+            doc->rows[doc->cursor_r].len+1 < DOC_COLS) { // room to move right?
+            AddChar(HID2ASCII(key_modes, key), !(key_modes & OVRWRT_MASK));
         } else {
             UpdateStatusBarMsg("Maximum line length exceeded!", STATUS_WARNING);
         }
@@ -561,7 +558,6 @@ static bool ProcessKeysInMainTextbox(textbox_t * txtbox, uint8_t key_modes, uint
 static bool ProcessKeyStates(void)
 {
     bool retval = true;
-    textbox_t * txtbox = get_active_textbox();
     panel_t * popup = get_popup();
     popup_type_t popup_type = get_popup_type();
     if (popup_type == MSGDIALOG) {
@@ -580,8 +576,8 @@ static bool ProcessKeyStates(void)
 
         if (popup != NULL) {
             ProcessKeysInPopup(popup, popup_type, key_modes, key);
-        } else if (txtbox != NULL && txtbox->in_focus) {
-            ProcessKeysInMainTextbox(txtbox, key_modes, key);
+        } else {
+            ProcessKeysInMainTextbox(key_modes, key);
         }
     }
     return retval; // continue looping if true, else exit
@@ -593,6 +589,7 @@ bool HandleKeys()
 {
     static uint16_t key_timer = 0;
     static uint8_t initial_delay_counter = 0;
+    uint8_t i, j, new_keys;
     bool retval = true; // continue looping if true, else exit
 
     // update timer counts
@@ -603,15 +600,12 @@ bool HandleKeys()
     // fill the keystates bitmask array
     RIA.addr0 = keybd_status;
     RIA.step0 = 0;
-    for (uint8_t i = 0; i < KEYBOARD_BYTES; i++) { // for each byte of 8 keys
+    for (i = 0; i < KEYBOARD_BYTES; i++) { // for each byte of 8 keys
         RIA.addr0 = keybd_status + i;
-        uint8_t new_keys = RIA.rw0;
-
-        for (uint8_t j = 0; j < 8; j++) { // for each key in byte
-
+        new_keys = RIA.rw0;
+        for (j = 0; j < 8; j++) { // for each key in byte
             uint8_t key_pressed = (new_keys & (1<<j)); // will be 1 if pressed, 0 if released
             uint8_t k = ((i<<3)+j); // compute key HID code
-
             if (k > 3) { // if regular HID keycode...
                 if (key_pressed != (keystates[i] & (1<<j))) { // ...and key state has changed since last time
                     // check if the key is a mode key, and update key modes
@@ -619,7 +613,6 @@ bool HandleKeys()
                     if (!modes_changed && key_pressed) { // non-mode key was just pressed
                         key_timer = 0;
                         initial_delay_counter = 0;
-
                         // add the new key to the keybuf, along with current mode_keys
                         keybuf[keybuf_tail] = ((uint16_t)mode_keys << 8) | (uint16_t)k;
                         keybuf_tail = ((keybuf_tail+1) < KEYBUF_SIZE) ? keybuf_tail+1 : 0;

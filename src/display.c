@@ -23,15 +23,8 @@ static uint8_t font_h = 16;
 static int8_t bpp = 4;
 static uint8_t bg_clr = BLACK;
 static uint8_t fg_clr = LIGHT_GRAY;
-/*
-static cursor_state_t cur_state = BLINK_OFF;
-static uint8_t cur_c = 40; // canvas_c/2
-static uint8_t cur_r = 15; // canvas_r/2
-static uint8_t cur_threshold = 15; // cursor blink delay
-*/
+
 static void * p_main_menu = NULL; // unless Main Menu is shown
-static void * p_active_textbox = NULL; // unless a textbox is in focus
-static void * p_status_bar = NULL; // unless Status Bar is shown
 static void * p_popup = NULL; //unless popup is overlapping display
 static uint8_t popuptype = 0; // INVALID
 
@@ -69,15 +62,17 @@ void InitDisplay(void)
 // ----------------------------------------------------------------------------
 void ClearDisplay(uint8_t bg, uint8_t fg)
 {
+    uint8_t r, c;
+
     bg_clr = bg;
     fg_clr = fg;
 
     RIA.addr0 = canvas_data;
     RIA.step0 = 1;
 
-    for (uint8_t i = 1; i < canvas_r-1; i++) {
-        for (uint8_t j = 0; j < canvas_c; j++) {
-            DrawChar(i, j, ' ', bg, fg);
+    for (r = 0; r < canvas_r; r++) {
+        for (c = 0; c < canvas_c; c++) {
+            DrawChar(r, c, ' ', bg, fg);
         }
     }
 }
@@ -97,11 +92,13 @@ void DrawChar(uint8_t row, uint8_t col, char ch, uint8_t bg, uint8_t fg)
 // ---------------------------------------------------------------------------
 void GetChar(uint8_t row, uint8_t col, char * pch, uint8_t * pbg, uint8_t *pfg)
 {
+     uint8_t bgfg;
+
     // for 4-bit color, index 2 bytes per ch
     RIA.addr0 = canvas_data + 2*(row*canvas_c + col);
     RIA.step0 = 1;
     *pch = RIA.rw0;
-    uint8_t bgfg = RIA.rw0;
+    bgfg = RIA.rw0;
     *pbg = bgfg >> 4;
     *pfg = bgfg & 0x0F;
 }
@@ -112,10 +109,11 @@ bool BackupChars(uint8_t row, uint8_t col, uint8_t width, uint8_t height, uint8_
 {
     if (pstash != NULL) {
         uint8_t * pbyte = pstash;
-        for (uint16_t i = row; i < row + height; i++) {
-            for (uint16_t j = col; j < col + width; j++) {
+        uint16_t r, c;
+        for (r = row; r < row + height; r++) {
+            for (c = col; c < col + width; c++) {
                 // for 4-bit color, index 2 bytes per ch
-                RIA.addr0 = canvas_data + 2*(i*canvas_c + j);
+                RIA.addr0 = canvas_data + 2*(r*canvas_c + c);
                 RIA.step0 = 1;
                 *(pbyte++) = RIA.rw0; // ch
                 *(pbyte++) = RIA.rw0; // bgfg
@@ -132,10 +130,11 @@ bool RestoreChars(uint8_t row, uint8_t col, uint8_t width, uint8_t height, uint8
 {
     if (pstash != NULL) {
         uint8_t * pbyte = pstash;
-        for (uint16_t i = row; i < row + height; i++) {
-            for (uint16_t j = col; j < col + width; j++) {
+        uint16_t r, c;
+        for (r = row; r < row + height; r++) {
+            for (c = col; c < col + width; c++) {
                 // for 4-bit color, index 2 bytes per ch
-                RIA.addr0 = canvas_data + 2*(i*canvas_c + j);
+                RIA.addr0 = canvas_data + 2*(r*canvas_c + c);
                 RIA.step0 = 1;
                 RIA.rw0 = *(pbyte++); // ch
                 RIA.rw0 = *(pbyte++); // bgfg
@@ -218,30 +217,6 @@ void * get_main_menu(void)
 void set_main_menu(void * pmain_menu)
 {
     p_main_menu = pmain_menu;
-}
-
-// ---------------------------------------------------------------------------
-// p_active_textbox is NULL, unless a textbox has focus
-// ---------------------------------------------------------------------------
-void * get_active_textbox(void)
-{
-    return p_active_textbox;
-}
-void set_active_textbox(void * pactive_textbox)
-{
-    p_active_textbox = pactive_textbox;
-}
-
-// ---------------------------------------------------------------------------
-// p_status_bar is NULL, unless Status Bar exists
-// ---------------------------------------------------------------------------
-void * status_bar(void)
-{
-    return p_status_bar;
-}
-void set_status_bar(void * pstatus_bar)
-{
-    p_status_bar = pstatus_bar;
 }
 
 // ---------------------------------------------------------------------------

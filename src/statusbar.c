@@ -7,17 +7,17 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
-#include "errno.h"
+#include <errno.h>
 #include "ezpsg.h"
 #include "colors.h"
 #include "display.h"
 #include "textbox.h"
 #include "statusbar.h"
 
-#define MAX_CUR_POS 16
+#define MAX_CUR_POS 18
 
-static uint16_t r = 29;
-static uint16_t c = 0;
+static uint16_t row = 29;
+static uint16_t col = 0;
 static uint8_t w = 80;
 static uint8_t h = 1;
 static uint8_t bg = DARK_BLUE;
@@ -77,8 +77,14 @@ typedef enum {
 } FRESULT;
 */
 // ---------------------------------------------------------------------------
-
+#ifdef __CC65__
+static const char * ERRNO_STR[] = {"ENOENT", "ENOMEM", "EACCES", "ENODEV", "EMFILE",
+                                   "EBUSY", "EINVAL", "ENOSPC", "EEXIST", "EAGAIN",
+                                   "EIO", "EINTR", "ENOSYS", "ESPIPE", "ERANGE", "EBADF",
+                                   "ENOEXEC", "EUNKNOWN"};
+#else
 static const char * ERRNO_STR[] = {"ERANGE", "EDOM", "EILSEQ", "EINVAL", "ENOMEM"};
+#endif
 #define errno_str(err) ERRNO_STR[(err)-1];
 
 static const char * FR_STR[] = {"FR_OK","FR_DISK_ERR","FR_INT_ERR","FR_NOT_READY",
@@ -88,27 +94,6 @@ static const char * FR_STR[] = {"FR_OK","FR_DISK_ERR","FR_INT_ERR","FR_NOT_READY
                                 "FR_MKFS_ABORTED","FR_TIMEOUT:","FR_LOCKED",
                                 "FR_NOT_ENOUGH_CORE","FR_TOO_MANY_OPEN_FILES"};
 #define fr_str(err) FR_STR[(err)-32];
-
-// ---------------------------------------------------------------------------
-// ---------------------------------------------------------------------------
-void ReportFileError(void)
-{
-    char msg[MAX_STATUS_MSG+1] = {0};
-    const char * err_code_str = NULL;
-    int16_t err_code = errno;
-
-    if (err_code >= ERANGE && err_code <= ENOMEM) {
-        err_code_str = errno_str(err_code);
-    } else if (err_code >= FR_OK && err_code <= FR_TOO_MANY_OPEN_FILES) {
-        err_code_str = fr_str(err_code);
-    } else {
-        // bug in llvm-mos API? It's what I get from open() on any error
-        err_code_str = "EUNKNOWN";
-    }
-    snprintf(msg, MAX_STATUS_MSG,
-             "File operation failed with error, %u, '%s'", err_code, err_code_str);
-    UpdateStatusBarMsg(msg, STATUS_ERROR);
-}
 
 // ----------------------------------------------------------------------------
 // ----------------------------------------------------------------------------
@@ -136,13 +121,38 @@ void ezpsg_instruments(const uint8_t **data)
 
 // ---------------------------------------------------------------------------
 // ---------------------------------------------------------------------------
+void ReportFileError(void)
+{
+    char msg[MAX_STATUS_MSG+1] = {0};
+    const char * err_code_str = NULL;
+    int16_t err_code = errno;
+
+#ifdef __CC65__
+    if (err_code >= ENOENT && err_code <= ENOEXEC) {
+#else
+    if (err_code >= ERANGE && err_code <= ENOMEM) {
+#endif
+        err_code_str = errno_str(err_code);
+    } else if (err_code >= FR_OK && err_code <= FR_TOO_MANY_OPEN_FILES) {
+        err_code_str = fr_str(err_code);
+    } else {
+        // bug in llvm-mos API? It's what I get from open() on any error
+        err_code_str = "EUNKNOWN";
+    }
+    snprintf(msg, MAX_STATUS_MSG,
+             "File operation failed with error, %u, '%s'", err_code, err_code_str);
+    UpdateStatusBarMsg(msg, STATUS_ERROR);
+}
+
+// ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
 void InitStatusBar(void)
 {
+    uint8_t c;
     // draw status bar background
-    for (uint8_t i = 0; i < w; i++) {
-        DrawChar(r, i, ' ', bg, fg);
+    for (c = 0; c < w; c++) {
+        DrawChar(row, col, ' ', bg, fg);
     }
-
     UpdateStatusBarMsg("Welcome to TE, a text editor for the RP6502", STATUS_INFO);
     UpdateStatusBarPos();
 }
@@ -151,6 +161,7 @@ void InitStatusBar(void)
 // ---------------------------------------------------------------------------
 void UpdateStatusBarMsg(const char * status_msg, status_level_t level)
 {
+    uint8_t c;
     uint8_t fg_clr = fg_info;
     uint8_t msg_len = 0;
 
@@ -173,11 +184,11 @@ void UpdateStatusBarMsg(const char * status_msg, status_level_t level)
         strncpy(msg, status_msg, MAX_STATUS_MSG);
         msg_len = strlen(msg);
     }
-    for (uint8_t i = 0; i <= MAX_STATUS_MSG; i++) {
-        DrawChar(r, i, ' ', bg, bg);
+    for (c = 0; c <= MAX_STATUS_MSG; c++) {
+        DrawChar(row, c, ' ', bg, bg);
     }
-    for (uint8_t i = 0; i < msg_len; i++) {
-        DrawChar(r, i+1, msg[i], bg, fg_clr);
+    for (c = 0; c < msg_len; c++) {
+        DrawChar(row, c+1, msg[c], bg, fg_clr);
     }
     if (msg_len > 0) {
         switch((uint8_t)level) {
@@ -198,23 +209,24 @@ void UpdateStatusBarMsg(const char * status_msg, status_level_t level)
 // ---------------------------------------------------------------------------
 void UpdateStatusBarPos(void)
 {
-    textbox_t * ptxtbox = get_active_textbox();
-    if (ptxtbox != NULL) {
-        // add extra +1 to row, col, so we have 1,1 at start of doc
-        uint16_t line = 1 + ptxtbox->doc.cursor_r;
-        uint16_t col = 1 + ptxtbox->doc.cursor_c;
+    uint8_t c, start;
+    doc_t * doc = GetDoc();
 
-        snprintf(pos, MAX_CUR_POS, "Line %u Col %u", line, col);
+    // add extra +1 to line, column, so we have 1,1 at start of doc
+    uint16_t line = 1 + doc->cursor_r;
+    uint16_t column = 1 + doc->cursor_c;
 
-        uint8_t start = w-MAX_CUR_POS-1;
-        for (uint8_t i = 0; i <= MAX_CUR_POS; i++) {
-            DrawChar(r, start+i, ' ', bg, fg);
-        }
-        start = w-1-strlen(pos);
-        for (uint8_t i = 0; i < strlen(pos); i++) {
-            DrawChar(r, start+i, pos[i], bg, fg);
-        }
+    snprintf(pos, MAX_CUR_POS, "Line %u Col %u ", line, column);
+
+    start = w-MAX_CUR_POS-1;
+    for (c = 0; c < MAX_CUR_POS; c++) {
+        DrawChar(row, start+c, ' ', bg, fg);
     }
+    start = w-1-strlen(pos);
+    for (c = 0; c < strlen(pos); c++) {
+        DrawChar(row, start+c, pos[c], bg, fg);
+    }
+
 }
 
 // ---------------------------------------------------------------------------
