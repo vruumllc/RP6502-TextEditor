@@ -94,7 +94,7 @@ static bool LeftBtnPressed(int16_t x, int16_t y)
         doc_t * doc = GetDoc();
         // move the cursor to the current mouse position
         uint16_t max_r = doc->last_row;
-        uint8_t max_c = doc->rows[r-txtbox->r].len;
+        uint8_t max_c = doc->rows[doc->offset_r + r-txtbox->r].len;
         doc->cursor_r = doc->offset_r + r - txtbox->r;
         if (doc->cursor_r > max_r) {
             doc->cursor_r = max_r;

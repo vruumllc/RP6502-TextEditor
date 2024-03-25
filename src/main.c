@@ -18,7 +18,7 @@
 #include "mouse.h"
 
 // canvas_data = 0x0000 to 0x12BF (display.c)
-// DOC buffers = 0x1300 to 0xEF4F (doc.h)
+// DOC buffers = 0x1300 to 0xFAFF (doc.h)
 #define MUSIC_CONFIG 0xFE00 // to 0xFE39 (requires 0x40 bytes mem)
 // mouse_data = 0xFE60 to 0xFEC3 (mouse.c)
 // canvas_struct = 0xFF00 to 0xFF0F (display.c)

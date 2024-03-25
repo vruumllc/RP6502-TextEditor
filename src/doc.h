@@ -9,11 +9,11 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
-// doc uses extended mem 0x11300 to 0x1EEFF
+// doc uses extended mem 0x11300 to 0x1FAFF
 #define DOC_MEM_START 0x1300
-#define DOC_MEM_SIZE 0xDC00 // 55k
+#define DOC_MEM_SIZE 0xE800 // 58k
 #define DOC_COLS 0x50 // 80
-#define DOC_ROWS 0x2C0 // 704
+#define DOC_ROWS 0x2E6 // 742
 
 #define MAX_FILENAME 31
 
