@@ -163,6 +163,9 @@ bool DeleteChar(bool backspace)
                     retval = DeleteRow(cur_r);
                     TheDoc.cursor_r = cur_r-1;
                     TheDoc.cursor_c = target_row_len;
+                    if (TheDoc.cursor_r < TheDoc.offset_r) {
+                        TheDoc.offset_r = TheDoc.cursor_r;
+                    }
                 }
             }
         } else { // delete char at cursor (if one), then ...
