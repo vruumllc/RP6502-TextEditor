@@ -19,6 +19,7 @@ typedef struct textbox {
     uint8_t bg;
     uint8_t fg;
     bool in_focus;
+    bool row_dirty[28]; // if display row needs redrawing
 } textbox_t;
 
 void InitTextbox(void);

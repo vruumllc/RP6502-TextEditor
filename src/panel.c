@@ -113,7 +113,7 @@ void DeletePanel(panel_t * panel)
 {
     if (panel != NULL) {
         uint8_t i;
-        textbox_t * txtbox = NULL;
+
         if (panel->pstash != NULL) {
             RestoreChars(panel->r, panel->c, panel->w, panel->h, panel->pstash);
 

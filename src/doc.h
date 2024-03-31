@@ -20,7 +20,6 @@
 typedef struct doc_row {
     void * ptxt; // address of (extended) memory for row data
     uint8_t len; // number of valid chars in row, including '\n'
-    bool dirty; // if row needs redrawing
 } doc_row_t;
 
 typedef struct doc {

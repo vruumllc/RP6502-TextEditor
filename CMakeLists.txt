@@ -7,8 +7,8 @@ add_executable(te)
 rp6502_executable(te)
 target_sources(te PRIVATE
 src/ezpsg.c
-src/doc.c
 src/display.c
+src/doc.c
 src/textbox.c
 src/statusbar.c
 src/file_ops.c

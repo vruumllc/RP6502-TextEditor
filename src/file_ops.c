@@ -29,6 +29,7 @@ static char row[DOC_COLS] = {0};
 void OpenFile()
 {
     doc_t * doc = GetDoc();
+    textbox_t * txtbox = GetTextbox();
     printf("OpenFile: Filename = %s\n", doc->filename);
     if (strlen(doc->filename) > 0) {
         int16_t retval = EINVAL;
@@ -67,9 +68,8 @@ void OpenFile()
                     }
                     strncpy(row, buf, DOC_COLS);
                     doc->rows[r].len = strlen(row)-1; // don't count '\n'
-                    printf("r=%u, %s", r, row);
+                    //printf("r=%u, %s", r, row);
                     WriteStr(doc->rows[r].ptxt, row, doc->rows[r].len+1); // copy '\n' too
-                    doc->rows[r].dirty = true;
                     if (doc->last_col < doc->rows[r].len) {
                         doc->last_col = doc->rows[r].len;
                     }
@@ -88,6 +88,9 @@ void OpenFile()
             }
             if (close(fd) < 0) {
                 ReportFileError();
+            }
+            for (r = 0; r < txtbox->h; r++) {
+                txtbox->row_dirty[r] = true;
             }
         } else {
             ReportFileError();
@@ -122,7 +125,7 @@ static void SaveFile(bool fail_if_exists)
                 puts("Had to add '\\n' to line end!\n");
             }
 
-            printf("r=%u %s", r, row);
+            //printf("r=%u %s", r, row);
 
             if (write(fd, row, doc->rows[r].len+1) < 0) {
                 ReportFileError();

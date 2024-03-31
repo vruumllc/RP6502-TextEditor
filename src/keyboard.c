@@ -380,6 +380,17 @@ static bool ProcessKeysInPopup(panel_t * popup, popup_type_t popup_type,
 
 // ----------------------------------------------------------------------------
 // ----------------------------------------------------------------------------
+static void MarkAllTextboxRowsDirty(void)
+{
+    uint8_t r;
+    textbox_t * txtbox = GetTextbox();
+    for (r = 0; r < txtbox->h; r++) {
+        txtbox->row_dirty[r] = true;
+    }
+}
+
+// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 static bool ProcessKeysInMainTextbox(uint8_t key_modes, uint8_t key)
 {
     uint16_t r;
@@ -431,32 +442,20 @@ static bool ProcessKeysInMainTextbox(uint8_t key_modes, uint8_t key)
         if (doc->cursor_r > 0) { // room to move up
             // if the cursor is at top of display, scroll by adjusting doc offset
             if (doc->cursor_r-1 < doc->offset_r) {
-                for (r = doc->cursor_r-1; r < doc->cursor_r+txtbox->h-1; r++) {
-                    doc->rows[r].dirty = true;
-                }
+                MarkAllTextboxRowsDirty();
                 doc->offset_r--;
             }
             doc->cursor_r -= 1;
-            // if cursor is beyond  new row's length, move it left appropriately
-            if (doc->cursor_c > doc->rows[doc->cursor_r].len) {
-                doc->cursor_c = doc->rows[doc->cursor_r].len;
-            }
             UpdateCursor();
         }
     } else if (key == KEY_DOWN || (key == KEY_KP2 && !(key_modes & NUMLK_MASK))) {
         if (doc->cursor_r < doc->last_row) { // room to move down
             // if the cursor is at bottom of display, scroll by adjusting doc offset
             if (doc->cursor_r+1 > txtbox->h-1+doc->offset_r) {
-                for (r = doc->cursor_r - txtbox->h + 1; r < doc->cursor_r+2; r++) {
-                    doc->rows[r].dirty = true;
-                }
+                MarkAllTextboxRowsDirty();
                 doc->offset_r++;
             }
             doc->cursor_r += 1;
-            // if cursor is beyond  new row's length, move it left appropriately
-            if (doc->cursor_c > doc->rows[doc->cursor_r].len) {
-                doc->cursor_c = doc->rows[doc->cursor_r].len;
-            }
             UpdateCursor();
         }
     } else if (key == KEY_LEFT || (key == KEY_KP4 && !(key_modes & NUMLK_MASK))) {
@@ -488,16 +487,9 @@ static bool ProcessKeysInMainTextbox(uint8_t key_modes, uint8_t key)
             doc->cursor_r = new_cursor_r;
             doc->offset_r -= (txtbox->h-1);
         }
-        for (r = doc->offset_r; r < old_offset + txtbox->h; r++) {
-            doc->rows[r].dirty = true;
-        }
-        // if cursor is beyond  new row's length, move it left appropriately
-        if (doc->cursor_c > doc->rows[doc->cursor_r].len) {
-            doc->cursor_c = doc->rows[doc->cursor_r].len;
-        }
+        MarkAllTextboxRowsDirty();
         UpdateCursor();
     } else if (key == KEY_PAGEDOWN || (key == KEY_KP3 && !(key_modes & NUMLK_MASK))) {
-        uint16_t max_dirty;
         uint16_t old_offset = doc->offset_r;
         uint16_t old_offset_to_bottom = doc->offset_r + (txtbox->h-1);
         uint16_t new_cursor_r = doc->cursor_r + (txtbox->h-1);
@@ -509,15 +501,7 @@ static bool ProcessKeysInMainTextbox(uint8_t key_modes, uint8_t key)
             doc->cursor_r = new_cursor_r;
             doc->offset_r += (txtbox->h-1);
         }
-        max_dirty = (old_offset_to_bottom + (txtbox->h-1) <= DOC_ROWS - 1) ?
-                     old_offset_to_bottom + (txtbox->h-1) : DOC_ROWS - 1;
-        for (r = old_offset; r < max_dirty; r++) {
-            doc->rows[r].dirty = true;
-        }
-        // if cursor is beyond  new row's length, move it left appropriately
-        if (doc->cursor_c > doc->rows[doc->cursor_r].len) {
-            doc->cursor_c = doc->rows[doc->cursor_r].len;
-        }
+        MarkAllTextboxRowsDirty();
         UpdateCursor();
     } else if (key == KEY_TAB) {
         if ((key_modes & OVRWRT_MASK)==0) { // insert mode only
@@ -527,6 +511,7 @@ static bool ProcessKeysInMainTextbox(uint8_t key_modes, uint8_t key)
                     for (i = 0; i < n; i++) {
                         AddChar(HID2ASCII(key_modes, KEY_SPACE), true);
                     }
+                    txtbox->row_dirty[doc->cursor_r - doc->offset_r] = true;
                 } else {
                     UpdateStatusBarMsg("Maximum line length exceeded!", STATUS_WARNING);
                 }
@@ -535,16 +520,29 @@ static bool ProcessKeysInMainTextbox(uint8_t key_modes, uint8_t key)
             }
         }
     } else if (key == KEY_ENTER || key == KEY_KPENTER) {
-        AddNewLine();
+        if(AddNewLine()) {
+            MarkAllTextboxRowsDirty();
+        }
     } else if (key == KEY_ESC) {
         // no action?
     } else if (key == KEY_BACKSPACE || key == KEY_DELETE
                                     || (key == KEY_KPDOT && !(key_modes & NUMLK_MASK))) {
+        bool row_deleted = ((key == KEY_BACKSPACE && doc->cursor_c == 0) ||
+                            (key != KEY_BACKSPACE && doc->cursor_c == doc->rows[doc->cursor_r].len));
         DeleteChar(key == KEY_BACKSPACE);
+        // did operation delete a row?
+        if (row_deleted) {
+            for (r = doc->cursor_r - doc->offset_r; r < txtbox->h; r++) {
+                txtbox->row_dirty[r] = true;
+            }
+        } else { // only current row is affected
+            txtbox->row_dirty[doc->cursor_r - doc->offset_r] = true;
+        }
     } else {
         if (((key_modes & OVRWRT_MASK) && doc->cursor_c < DOC_COLS-1) ||
             doc->rows[doc->cursor_r].len+1 < DOC_COLS) { // room to move right?
             AddChar(HID2ASCII(key_modes, key), !(key_modes & OVRWRT_MASK));
+            txtbox->row_dirty[doc->cursor_r - doc->offset_r] = true;
         } else {
             UpdateStatusBarMsg("Maximum line length exceeded!", STATUS_WARNING);
         }

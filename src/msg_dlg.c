@@ -173,7 +173,7 @@ void DeleteMsgDlg(msg_dlg_t * pmsg_dlg)
 {
     if (pmsg_dlg != NULL) {
         uint8_t i;
-        textbox_t * txtbox = NULL;
+
         if (pmsg_dlg->panel.pstash != NULL) {
             RestoreChars(pmsg_dlg->panel.r, pmsg_dlg->panel.c, pmsg_dlg->panel.w, pmsg_dlg->panel.h, pmsg_dlg->panel.pstash);
 

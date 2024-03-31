@@ -93,16 +93,8 @@ static bool LeftBtnPressed(int16_t x, int16_t y)
     } else if (txtbox != NULL && r < canvas_rows()-1) { // not in status bar
         doc_t * doc = GetDoc();
         // move the cursor to the current mouse position
-        uint16_t max_r = doc->last_row;
-        uint8_t max_c = doc->rows[doc->offset_r + r-txtbox->r].len;
         doc->cursor_r = doc->offset_r + r - txtbox->r;
-        if (doc->cursor_r > max_r) {
-            doc->cursor_r = max_r;
-        }
         doc->cursor_c = c - txtbox->c;
-        if (doc->cursor_c > max_c) {
-            doc->cursor_c = max_c;
-        }
         UpdateCursor();
         UpdateStatusBarPos();
     }
@@ -143,10 +135,10 @@ static void MouseMoved(int16_t x, int16_t y)
         if (panel_type == MSGDIALOG) {
             SetFocusToPanelButton(&((msg_dlg_t*)popup)->panel, r, c);
         } else if (panel_type == FILEDIALOG) {
-            textbox_t * txtbox = GetTextbox();
+            doc_t * doc = GetDoc();
             file_dlg_t * dlg = (file_dlg_t*)popup;
-            if (r == (txtbox->r) &&
-                c >= (txtbox->c) && c <= (txtbox->c + txtbox->w)) {
+            if (r == (doc->cur_filename_r) &&
+                c >= (doc->cur_filename_c) && c < (doc->cur_filename_c + MAX_FILENAME)) {
                 RemoveFocusFromAllPanelButtons(&dlg->panel);
                 UpdateTextboxFocus(true);
             } else {

@@ -7,6 +7,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+#include "display.h"
 #include "doc.h"
 
 // for the main window's document textbox, starting at 0x1130
@@ -53,7 +54,6 @@ void ClearDoc(bool save_filename)
     for (r = 0 ; r < DOC_ROWS; r++) {
         TheDoc.rows[r].ptxt = (void*)(DOC_MEM_START + sizeof(uint8_t)*(DOC_COLS*(r+1)));
         TheDoc.rows[r].len = 0;
-        TheDoc.rows[r].dirty = true;
         RIA.addr0 = (uint16_t)TheDoc.rows[r].ptxt;
         RIA.step0 = 1;
         for (c = 0; c < DOC_COLS; c++) {
@@ -131,7 +131,6 @@ bool AddChar(char chr, bool insert_mode)
             if (TheDoc.last_col < TheDoc.rows[cur_r].len) {
                 TheDoc.last_col = TheDoc.rows[cur_r].len;
             }
-            TheDoc.rows[cur_r].dirty = true;
             TheDoc.dirty = true;
             return true;
         }
@@ -156,7 +155,6 @@ bool DeleteChar(bool backspace)
                 TheDoc.cursor_c--;
                 TheDoc.rows[cur_r].len--;
                 WriteStr(TheDoc.rows[TheDoc.cursor_r].ptxt, row, DOC_COLS);
-                TheDoc.rows[TheDoc.cursor_r].dirty = true;
                 TheDoc.dirty = true;
                 retval = true;
             } else { // ... at row start, so append current row to row above and delete current row
@@ -172,7 +170,6 @@ bool DeleteChar(bool backspace)
                 memmove(row + cur_c, row + cur_c+1, DOC_COLS - cur_c);
                 TheDoc.rows[cur_r].len--;
                 WriteStr(TheDoc.rows[TheDoc.cursor_r].ptxt, row, DOC_COLS);
-                TheDoc.rows[TheDoc.cursor_r].dirty = true;
                 TheDoc.dirty = true;
                 retval = true;
             } else { // ... at row end, so append row below to current row, and delete row below
@@ -204,7 +201,6 @@ bool AddNewLine(void)
         memcpy(new_row, row + cur_c, TheDoc.rows[cur_r].len - cur_c + 1);
         WriteStr(TheDoc.rows[cur_r+1].ptxt, new_row, DOC_COLS);
         TheDoc.rows[cur_r+1].len = TheDoc.rows[cur_r].len - cur_c;
-        TheDoc.rows[cur_r+1].dirty = true;
 
         // clear the text after the cursor on the current line
         memset(row + cur_c, 0, DOC_COLS - cur_c);
@@ -212,11 +208,13 @@ bool AddNewLine(void)
 
         WriteStr(TheDoc.rows[cur_r].ptxt, row, DOC_COLS);
         TheDoc.rows[cur_r].len = cur_c;
-        TheDoc.rows[cur_r].dirty = true;
 
         // finally, position the cursor at the beginning of the new line
         TheDoc.cursor_r++;
         TheDoc.cursor_c = 0;
+        if (TheDoc.cursor_r >= TheDoc.offset_r + (canvas_rows()-2)) {
+            TheDoc.offset_r++;
+        }
         TheDoc.dirty = true;
         return true;
     }
@@ -239,7 +237,6 @@ bool AddRow(uint16_t row_index)
                 ReadStr(TheDoc.rows[r].ptxt, row, TheDoc.rows[r].len+1);
                 WriteStr(TheDoc.rows[r+1].ptxt, row, DOC_COLS);
                 TheDoc.rows[r+1].len = TheDoc.rows[r].len;
-                TheDoc.rows[r+1].dirty = true;
             }
             TheDoc.last_row++;
             TheDoc.dirty = true;
@@ -263,13 +260,11 @@ bool DeleteRow(uint16_t row_index)
             ReadStr(TheDoc.rows[r+1].ptxt, row, TheDoc.rows[r+1].len+1);
             WriteStr(TheDoc.rows[r].ptxt, row, DOC_COLS);
             TheDoc.rows[r].len = TheDoc.rows[r+1].len;
-            TheDoc.rows[r].dirty = true;
         }
         // clear previous last row
         memset(row, 0, DOC_COLS);
         WriteStr(TheDoc.rows[TheDoc.last_row].ptxt, row, DOC_COLS);
         TheDoc.rows[TheDoc.last_row].len = 0;
-        TheDoc.rows[TheDoc.last_row].dirty = true;
         TheDoc.last_row--;
         TheDoc.dirty = true;
         return true;
@@ -297,7 +292,6 @@ bool AppendString(char * str, uint16_t row_index)
                 row[len_result] = '\n';
                 WriteStr(TheDoc.rows[row_index].ptxt, row, DOC_COLS);
                 TheDoc.rows[row_index].len = len_result;
-                TheDoc.rows[row_index].dirty = true;
                 if (TheDoc.last_col < TheDoc.rows[row_index].len) {
                     TheDoc.last_col = TheDoc.rows[row_index].len;
                 }
