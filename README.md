@@ -5,6 +5,6 @@ An ASCII text editor for the [Picocomputer 6502](https://picocomputer.github.io/
 
 For the BASIC programmers. Enjoy!
 
-Currently supports up to 80 columns x 704 lines
+Currently supports up to 80 columns x 742 lines
 
 This is an LLVM-MOS C project
