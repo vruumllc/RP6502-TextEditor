@@ -1,5 +1,0 @@
-{
-    "cmake.environment": {
-        "PATH": "/mnt/data/Projects/RP6502/llvm-mos/bin:${env:PATH}"
-    }
-}
