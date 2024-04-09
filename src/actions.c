@@ -238,7 +238,7 @@ void HelpAbout(void)
 {
     msg_dlg_t * msg_dialog = NULL;
     CloseAnyPopupMenu();
-    msg_dialog = NewMsgDlg("Te, written by tonyvr", OK, NOP, NOP, NOP);
+    msg_dialog = NewMsgDlg("TE, written by tonyvr", OK, NOP, NOP, NOP);
     if (msg_dialog != NULL) {
         uint8_t show_r, show_c;
         set_popup(msg_dialog);
