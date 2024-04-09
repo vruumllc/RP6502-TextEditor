@@ -24,10 +24,6 @@ static int8_t bpp = 4;
 static uint8_t bg_clr = BLACK;
 static uint8_t fg_clr = LIGHT_GRAY;
 
-static void * p_main_menu = NULL; // unless Main Menu is shown
-static void * p_popup = NULL; //unless popup is overlapping display
-static uint8_t popuptype = 0; // INVALID
-
 // ---------------------------------------------------------------------------
 // canvas_type = 3 (640x480), font_opt = 1 (8x16), bpp_opt = 2 (4bpp),
 // plane = 0, canvas_struct = 0xFF00, canvas_data = 0x000
@@ -205,42 +201,4 @@ uint8_t font_width(void)
 // ---------------------------------------------------------------------------
 uint8_t font_height(void) {
     return font_h;
-};
-
-// ---------------------------------------------------------------------------
-// p_main_menu is NULL, unless Main Menu exists
-// ---------------------------------------------------------------------------
-void * get_main_menu(void)
-{
-    return p_main_menu;
-}
-void set_main_menu(void * pmain_menu)
-{
-    p_main_menu = pmain_menu;
-}
-
-// ---------------------------------------------------------------------------
-// p_popup is NULL, unless a popup is overlapping display
-// ---------------------------------------------------------------------------
-void * get_popup(void)
-{
-    return p_popup;
-}
-void set_popup(void * popup)
-{
-    p_popup = popup;
-}
-
-// ---------------------------------------------------------------------------
-// popuptype stores enumerated type defined in display.h
-// It is NONE (0), unless a popup is overlapping the display,
-// in which case it tells which kind of popup panel is displayed.
-// ---------------------------------------------------------------------------
-popup_type_t get_popup_type(void)
-{
-    return popuptype;
-};
-void set_popup_type(popup_type_t popup_type)
-{
-    popuptype = popup_type;
 };

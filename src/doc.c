@@ -7,31 +7,22 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
-#include "display.h"
 #include "doc.h"
 
 // for the main window's document textbox, starting at 0x1130
 static doc_row_t doc_rows[DOC_ROWS]; // array of pointers to extended memory
 
-static doc_t TheDoc = {
+doc_t TheDoc = {
     0, // cur_filename_r
     0, // cur_filename_c
     0, // cursor_r
     0, // cursor_c
     0, // offset_r
     0, // last_row
-    0, // last_col
     false, // dirty
     {0}, //filename
     doc_rows
 }; // the one and only
-
-// ---------------------------------------------------------------------------
-// ---------------------------------------------------------------------------
-doc_t * GetDoc(void)
-{
-    return &TheDoc;
-}
 
 // ---------------------------------------------------------------------------
 // ---------------------------------------------------------------------------
@@ -45,7 +36,6 @@ void ClearDoc(bool save_filename)
     TheDoc.cursor_c = 0;
     TheDoc.offset_r = 0;
     TheDoc.last_row = 0;
-    TheDoc.last_col = 0;
     TheDoc.dirty = false;
     if (!save_filename) {
         memset(TheDoc.filename, 0, MAX_FILENAME+1);
@@ -99,37 +89,25 @@ bool WriteStr(void * addr, char * str, uint8_t len)
 // ---------------------------------------------------------------------------
 // Try to add ASCII char to doc, shifting data if necessary
 // ---------------------------------------------------------------------------
-bool AddChar(char chr, bool insert_mode)
+bool AddChar(char chr)
 {
     if (chr != 0) {
         // is there room to add another char?
-        if ((!insert_mode && TheDoc.cursor_c < DOC_COLS-1) ||
-            (TheDoc.rows[TheDoc.cursor_r].len+1 < DOC_COLS)) {
+        if (TheDoc.rows[TheDoc.cursor_r].len+1 < DOC_COLS) {
+            int16_t n;
             char row[DOC_COLS] = {0};
             int16_t cur_r = TheDoc.cursor_r;
             ReadStr(TheDoc.rows[cur_r].ptxt, row, TheDoc.rows[cur_r].len+1);
-            // if INSERT mode, need to shift chars right if not at line end
-            if (insert_mode) {
-                int16_t n = ((TheDoc.rows[cur_r].len) -
-                                (TheDoc.cursor_c)*sizeof(char));
-                if (n > 0) {
-                    memmove(row+TheDoc.cursor_c+1, row+TheDoc.cursor_c, n);
-                }
-                row[TheDoc.cursor_c++] = chr; //OK, now insert new char
-                row[++TheDoc.rows[cur_r].len] = '\n'; // just making sure
-            } else { // just overwrite what is there, if anything
-                row[TheDoc.cursor_c++] = chr;
-                if (TheDoc.rows[cur_r].len < TheDoc.cursor_c) {
-                    TheDoc.rows[cur_r].len = TheDoc.cursor_c;
-                }
-                row[TheDoc.rows[cur_r].len] = '\n'; // just making sure
+            // Need to shift chars right if not at line end
+            n = ((TheDoc.rows[cur_r].len) - (TheDoc.cursor_c)*sizeof(char));
+            if (n > 0) {
+                memmove(row+TheDoc.cursor_c+1, row+TheDoc.cursor_c, n);
             }
+            row[TheDoc.cursor_c++] = chr; //OK, now insert new char
+            row[++TheDoc.rows[cur_r].len] = '\n'; // just making sure
             WriteStr(TheDoc.rows[cur_r].ptxt, row, DOC_COLS);
             if (TheDoc.last_row < cur_r) {
                 TheDoc.last_row = cur_r;
-            }
-            if (TheDoc.last_col < TheDoc.rows[cur_r].len) {
-                TheDoc.last_col = TheDoc.rows[cur_r].len;
             }
             TheDoc.dirty = true;
             return true;
@@ -215,7 +193,7 @@ bool AddNewLine(void)
         // finally, position the cursor at the beginning of the new line
         TheDoc.cursor_r++;
         TheDoc.cursor_c = 0;
-        if (TheDoc.cursor_r >= TheDoc.offset_r + (canvas_rows()-2)) {
+        if (TheDoc.cursor_r >= TheDoc.offset_r + DOC_ROWS_DISPLAYED) {
             TheDoc.offset_r++;
         }
         TheDoc.dirty = true;
@@ -295,10 +273,7 @@ bool AppendString(char * str, uint16_t row_index)
                 row[len_result] = '\n';
                 WriteStr(TheDoc.rows[row_index].ptxt, row, DOC_COLS);
                 TheDoc.rows[row_index].len = len_result;
-                if (TheDoc.last_col < TheDoc.rows[row_index].len) {
-                    TheDoc.last_col = TheDoc.rows[row_index].len;
-                }
-                TheDoc.dirty = true;
+				TheDoc.dirty = true;
                 return true;
             }
         }

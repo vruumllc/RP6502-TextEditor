@@ -114,7 +114,7 @@ void ezpsg_instruments(const uint8_t **data)
     default:
         // The instrumment you just added probably isn't
         // consuming the correct number of paramaters.
-        puts("Unknown instrument.");
+        //puts("Unknown instrument.");
         exit(1);
     }
 }
@@ -210,11 +210,10 @@ void UpdateStatusBarMsg(const char * status_msg, status_level_t level)
 void UpdateStatusBarPos(void)
 {
     uint8_t c, start;
-    doc_t * doc = GetDoc();
 
     // add extra +1 to line, column, so we have 1,1 at start of doc
-    uint16_t line = 1 + doc->cursor_r;
-    uint16_t column = 1 + doc->cursor_c;
+    uint16_t line = 1 + TheDoc.cursor_r;
+    uint16_t column = 1 + TheDoc.cursor_c;
 
     snprintf(pos, MAX_CUR_POS, "Line %u Col %u ", line, column);
 
@@ -226,7 +225,6 @@ void UpdateStatusBarPos(void)
     for (c = 0; c < strlen(pos); c++) {
         DrawChar(row, start+c, pos[c], bg, fg);
     }
-
 }
 
 // ---------------------------------------------------------------------------

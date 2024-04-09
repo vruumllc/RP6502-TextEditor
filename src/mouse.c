@@ -5,6 +5,7 @@
 #include <rp6502.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <string.h>
 #include <stdio.h>
 #include "display.h"
 #include "textbox.h"
@@ -22,6 +23,7 @@ static uint16_t mouse_data = 0xFE60; // to 0xFEC3, since 100 bytes are needed fo
 static uint16_t mouse_state = 0xFF40;
 static uint16_t mouse_X = 0;
 static uint16_t mouse_Y = 0;
+static bool left_button_pressed = false;
 
 // ----------------------------------------------------------------------------
 // ----------------------------------------------------------------------------
@@ -71,8 +73,6 @@ static bool LeftBtnPressed(int16_t x, int16_t y)
     bool retval = false;
     uint16_t r = y/font_height();
     uint16_t c = x/font_width();
-    textbox_t * txtbox = GetTextbox();
-    panel_t * main_menu = get_main_menu();
     panel_t * popup = get_popup();
     popup_type_t panel_type = get_popup_type();
     if (popup != NULL) { // did we press a popup button?
@@ -85,16 +85,17 @@ static bool LeftBtnPressed(int16_t x, int16_t y)
         } else{
             retval = IsPanelButtonPressed(popup, r, c);
             if (panel_type == SUBMENU) {
-                RemoveFocusFromAllPanelButtons(main_menu);
+                RemoveFocusFromAllPanelButtons(&TheMainMenu);
             }
         }
-    } else if (r == 0 && main_menu != NULL) { // did we press a Main menu button?
+    } else if (r == 0) { // did we press a Main menu button?
         retval = IsMainMenuButtonPressed(r, c);
-    } else if (txtbox != NULL && r < canvas_rows()-1) { // not in status bar
-        doc_t * doc = GetDoc();
+    } else if (r < canvas_rows()-1) { // not in status bar
+        left_button_pressed = true;
         // move the cursor to the current mouse position
-        doc->cursor_r = doc->offset_r + r - txtbox->r;
-        doc->cursor_c = c - txtbox->c;
+        TheDoc.cursor_r = (r - TheTextbox.r) + TheDoc.offset_r;
+        TheDoc.cursor_c = (c - TheTextbox.c);
+        StartMarkingText();
         UpdateCursor();
         UpdateStatusBarPos();
     }
@@ -105,6 +106,12 @@ static bool LeftBtnPressed(int16_t x, int16_t y)
 // ----------------------------------------------------------------------------
 static bool LeftBtnReleased(int16_t x, int16_t y)
 {
+    uint16_t r = y/font_height();
+    uint16_t c = x/font_width();
+    left_button_pressed = false;
+    StopMarkingText();
+    UpdateCursor();
+    UpdateStatusBarPos();
     return true;
 }
 
@@ -126,7 +133,6 @@ static bool RightBtnReleased(int16_t x, int16_t y)
 // ----------------------------------------------------------------------------
 static void MouseMoved(int16_t x, int16_t y)
 {
-    panel_t * main_menu = get_main_menu();
     panel_t * popup = get_popup();
     popup_type_t panel_type = get_popup_type();
     uint16_t r = y/font_height();
@@ -135,10 +141,9 @@ static void MouseMoved(int16_t x, int16_t y)
         if (panel_type == MSGDIALOG) {
             SetFocusToPanelButton(&((msg_dlg_t*)popup)->panel, r, c);
         } else if (panel_type == FILEDIALOG) {
-            doc_t * doc = GetDoc();
             file_dlg_t * dlg = (file_dlg_t*)popup;
-            if (r == (doc->cur_filename_r) &&
-                c >= (doc->cur_filename_c) && c < (doc->cur_filename_c + MAX_FILENAME)) {
+            if (r == (TheDoc.cur_filename_r) &&
+                c >= (TheDoc.cur_filename_c) && c < (TheDoc.cur_filename_c + MAX_FILENAME)) {
                 RemoveFocusFromAllPanelButtons(&dlg->panel);
                 UpdateTextboxFocus(true);
             } else {
@@ -161,11 +166,21 @@ static void MouseMoved(int16_t x, int16_t y)
         } else {
             SetFocusToPanelButton(popup, r, c);
         }
-    } else if (main_menu != NULL) {
-        if (r == 0) {
-            SetFocusToPanelButton(main_menu, r, c);
-        } else { // need to find the button with focus and de-focus it
-            RemoveFocusFromAllPanelButtons(main_menu);
+    } else if (r == 0) { // main menu
+            SetFocusToPanelButton(&TheMainMenu, r, c);
+    } else if (r < canvas_rows()-1) { // not in status bar either, so must be in txtbox
+         // need to find any button with focus and de-focus it
+        RemoveFocusFromAllPanelButtons(&TheMainMenu);
+        if (left_button_pressed &&
+            MarkingText((r - TheTextbox.r) + TheDoc.offset_r,
+                        (c - TheTextbox.c))) {
+            // move the cursor to the current mouse position
+            TheDoc.cursor_r = (r - TheTextbox.r) + TheDoc.offset_r;
+            TheDoc.cursor_c = (c - TheTextbox.c);
+            UpdateCursor();
+            MarkText();
+            SetAllTextboxRowsDirty();
+            UpdateStatusBarPos();
         }
     }
 }

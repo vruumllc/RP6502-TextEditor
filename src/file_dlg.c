@@ -17,8 +17,6 @@
 #include "file_ops.h"
 #include "file_dlg.h"
 
-static doc_t * doc = NULL;
-
 // ---------------------------------------------------------------------------
 // ---------------------------------------------------------------------------
 file_dlg_t * NewFileDlg(file_dlg_type_t type, char * msg)
@@ -28,7 +26,6 @@ file_dlg_t * NewFileDlg(file_dlg_type_t type, char * msg)
     if (pfile_dlg != NULL) {
         uint8_t i, len_msg, len_btns;
 
-        doc = GetDoc();
         pfile_dlg->file_dlg_type = type;
 
         if (msg != NULL) {
@@ -156,15 +153,15 @@ bool ShowFileDlg(file_dlg_t * pfile_dlg, uint8_t row, uint8_t col)
                 }
 
                 // draw the filename
-                len  = strlen(doc->filename);
+                len  = strlen(TheDoc.filename);
                 i = 0;
                 for (c = pfile_dlg->panel.c + 1; c < pfile_dlg->panel.c + pfile_dlg->panel.w - 1; c++) {
-                    DrawChar(pfile_dlg->panel.r + 3, c,  doc->filename[i++], BLACK, WHITE);
+                    DrawChar(pfile_dlg->panel.r + 3, c,  TheDoc.filename[i++], BLACK, WHITE);
                 }
 
                 // initialize doc filename cursor locations
-                doc->cur_filename_r = pfile_dlg->panel.r + 3;
-                doc->cur_filename_c = pfile_dlg->panel.c + 1 + len;
+                TheDoc.cur_filename_r = pfile_dlg->panel.r + 3;
+                TheDoc.cur_filename_c = pfile_dlg->panel.c + 1 + len;
                 UpdateTextboxFocus(true);
 
                 // show the buttons
@@ -239,11 +236,11 @@ void AddCharToFilename(char chr)
         (chr >= '0' && chr <= '9') ||
          chr == '-' || chr == '_' ||
          chr == ':' || chr == '/' || chr == '.') {
-        int8_t len = strlen(doc->filename);
+        int8_t len = strlen(TheDoc.filename);
         if (len < MAX_FILENAME-1) {
             UpdateTextboxFocus(false);
-            DrawChar(doc->cur_filename_r, doc->cur_filename_c++, chr, BLACK, WHITE);
-            doc->filename[len++] = chr;
+            DrawChar(TheDoc.cur_filename_r, TheDoc.cur_filename_c++, chr, BLACK, WHITE);
+            TheDoc.filename[len++] = chr;
             UpdateTextboxFocus(true);
         }
     }
@@ -253,11 +250,11 @@ void AddCharToFilename(char chr)
 // ---------------------------------------------------------------------------
 void DeleteCharFromFilename(void)
 {
-    int8_t len = strlen(doc->filename);
+    int8_t len = strlen(TheDoc.filename);
     if (len > 0) {
         UpdateTextboxFocus(false);
-        DrawChar(doc->cur_filename_r, --doc->cur_filename_c, ' ', BLACK, WHITE);
-        doc->filename[--len] = 0;
+        DrawChar(TheDoc.cur_filename_r, --TheDoc.cur_filename_c, ' ', BLACK, WHITE);
+        TheDoc.filename[--len] = 0;
         UpdateTextboxFocus(true);
     }
 }

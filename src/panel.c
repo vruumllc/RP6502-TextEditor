@@ -144,7 +144,6 @@ void DeletePanel(panel_t * panel)
 void PanelButtonPressed(panel_t * panel, uint8_t index)
 {
     if (panel != NULL) {
-        panel_t * pmain_menu = get_main_menu();
         panel_t * popup = get_popup();
         popup_type_t popup_type;
         if (popup != NULL) {
@@ -152,7 +151,7 @@ void PanelButtonPressed(panel_t * panel, uint8_t index)
             // make sure we don't hide a dialog box created by menu action
             popup_type = get_popup_type();
             if (popup_type == SUBMENU || popup_type == CONTEXTMENU ) {
-                RemoveFocusFromAllPanelButtons(pmain_menu);
+                RemoveFocusFromAllPanelButtons(popup);
                 DeletePanel(panel);
             }
         }

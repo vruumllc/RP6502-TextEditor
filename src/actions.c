@@ -23,10 +23,8 @@
 // ---------------------------------------------------------------------------
 void FileOpen(void)
 {
-    doc_t * doc = NULL;
     CloseAnyPopupMenu();
-    doc = GetDoc();
-    if (doc->dirty) {
+    if (TheDoc.dirty) {
         UpdateStatusBarMsg("File has changed! Save or close before opening new one.", STATUS_WARNING);
     } else {
         file_dlg_t * file_dialog = NewFileDlg(OPEN, "Specify name of file to open:");
@@ -48,11 +46,9 @@ void FileOpen(void)
 // ---------------------------------------------------------------------------
 void FileSave(void)
 {
-    doc_t * doc = NULL;
     CloseAnyPopupMenu();
-    doc = GetDoc();
-    if (strlen(doc->filename) != 0) {
-        printf("FileSave: Filename = %s\n", doc->filename);
+    if (strlen(TheDoc.filename) != 0) {
+        //printf("FileSave: Filename = %s\n", TheDoc.filename);
         ResaveFile();
     } else { // need to prompt for name first
         UpdateStatusBarMsg("Filename needs to be specified!", STATUS_INFO);
@@ -119,10 +115,8 @@ static void PromptForSaveFromFileClose(void)
 // ---------------------------------------------------------------------------
 void FileClose(void)
 {
-    doc_t * doc = NULL;
     CloseAnyPopupMenu();
-    doc = GetDoc();
-    if (doc->dirty) {
+    if (TheDoc.dirty) {
         UpdateStatusBarMsg("File has changed! Save before close.", STATUS_INFO);
         PromptForSaveFromFileClose();
     } else {
@@ -169,10 +163,8 @@ static void PromptForSaveFromFileExit(void)
 // ---------------------------------------------------------------------------
 void FileExit(void)
 {
-    doc_t * doc = NULL;
     CloseAnyPopupMenu();
-    doc = GetDoc();
-    if (doc->dirty) {
+    if (TheDoc.dirty) {
         UpdateStatusBarMsg("File has changed! Save before exit.", STATUS_INFO);
         PromptForSaveFromFileExit();
     } else {
@@ -192,12 +184,17 @@ void FileExit(void)
     }
 }
 
-/*
 // ---------------------------------------------------------------------------
 // ---------------------------------------------------------------------------
 void EditCut(void)
 {
     CloseAnyPopupMenu();
+    if (!CopyMarkedTextToClipboard()) {
+        UpdateStatusBarMsg("Out of memory for Clipboard!", STATUS_ERROR);
+    } else {
+        CutMarkedText();
+    }
+    ClearMarkedText();
 }
 
 // ---------------------------------------------------------------------------
@@ -205,6 +202,10 @@ void EditCut(void)
 void EditCopy(void)
 {
     CloseAnyPopupMenu();
+    if (!CopyMarkedTextToClipboard()) {
+        UpdateStatusBarMsg("Out of memory for Clipboard!", STATUS_ERROR);
+    }
+    ClearMarkedText();
 }
 
 // ---------------------------------------------------------------------------
@@ -212,8 +213,11 @@ void EditCopy(void)
 void EditPaste(void)
 {
     CloseAnyPopupMenu();
+    if (!PasteTextFromClipboard()) {
+        UpdateStatusBarMsg("Paste would exceed row or column limits!", STATUS_WARNING);
+    }
 }
-
+/*
 // ---------------------------------------------------------------------------
 // ---------------------------------------------------------------------------
 void EditFind(void)

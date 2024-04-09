@@ -41,7 +41,6 @@ static uint8_t keybuf_tail = 0;
 #define META_MASK   0x08
 #define NUMLK_MASK  0x10
 #define CAPSLK_MASK 0x20
-#define OVRWRT_MASK 0x40
 static uint8_t mode_keys = 0;
 
 static const char shifted[][2] = {{'a','A'}, // 4 = 0x04 (KEY_A)
@@ -123,7 +122,6 @@ static bool DetectModeKeys(uint8_t k)
 // ----------------------------------------------------------------------------
 static bool ProcessModeKeys(uint8_t k, bool key_pressed)
 {
-    static bool overwrite_mode = false;
     static bool caps_lock = false;
     static bool num_lock = false;
     static bool shift_left = false;
@@ -143,10 +141,7 @@ static bool ProcessModeKeys(uint8_t k, bool key_pressed)
     if (DetectModeKeys(k)) {
         mode_changed = true; // until proven otherwise;
 
-        if (((k == KEY_INSERT) ||
-             (k == KEY_KP0 && !num_lock)) && key_pressed) {
-            overwrite_mode = !overwrite_mode;
-        } else if (k == KEY_NUMLOCK && key_pressed) {
+        if (k == KEY_NUMLOCK && key_pressed) {
             num_lock = !num_lock;
         } else if (k == KEY_CAPSLOCK && key_pressed) {
             caps_lock = !caps_lock;
@@ -174,13 +169,19 @@ static bool ProcessModeKeys(uint8_t k, bool key_pressed)
             ctrl_pressed = ctrl_left || ctrl_right;
             alt_pressed = alt_left || alt_right;
             meta_pressed = meta_left || meta_right;
-            mode_keys = ((overwrite_mode?1:0)  << 6) |
-                        ((caps_lock?1:0)       << 5) |
+            mode_keys = ((caps_lock?1:0)       << 5) |
                         ((num_lock?1:0)        << 4) |
                         ((meta_pressed?1:0)    << 3) |
                         ((alt_pressed?1:0)     << 2) |
                         ((ctrl_pressed?1:0)    << 1) |
                         (shift_pressed?1:0);
+
+            // handle mark_state here
+            if (shift_pressed) {
+                StartMarkingText();
+            } else { // shift released
+                StopMarkingText();
+            }
         }
     }
     return mode_changed;
@@ -218,49 +219,45 @@ static bool ProcessKeysInPopup(panel_t * popup, popup_type_t popup_type,
 {
     uint8_t i;
     bool retval = true;
-    panel_t * main_menu = get_main_menu();
-    textbox_t * txtbox = GetTextbox();
 
     // If submenu is open, can select submenu item using high-lighted letter
     if (SubmenuShowing() == 1) { // File
         if (key == KEY_O) {        //  'O'pen
-            RemoveFocusFromAllPanelButtons(main_menu);
+            RemoveFocusFromAllPanelButtons(&TheMainMenu);
             FileOpen();
         } else if (key == KEY_S) { //  'S'ave
-            RemoveFocusFromAllPanelButtons(main_menu);
+            RemoveFocusFromAllPanelButtons(&TheMainMenu);
             FileSave();
         } else if (key == KEY_A) { //   Save 'A's
-            RemoveFocusFromAllPanelButtons(main_menu);
+            RemoveFocusFromAllPanelButtons(&TheMainMenu);
             FileSaveAs();
         } else if (key == KEY_C) { //  'C'lose
-            RemoveFocusFromAllPanelButtons(main_menu);
+            RemoveFocusFromAllPanelButtons(&TheMainMenu);
             FileClose();
         } else if (key == KEY_X) { //   E'x'it
-            RemoveFocusFromAllPanelButtons(main_menu);
+            RemoveFocusFromAllPanelButtons(&TheMainMenu);
             FileExit();
         }
-/*
     } else if (SubmenuShowing() == 2) { // Edit0
         if (key == KEY_T) {        //   Cu't'
-            RemoveFocusFromAllPanelButtons(main_menu);
+            RemoveFocusFromAllPanelButtons(&TheMainMenu);
             EditCut();
         } else if (key == KEY_C) { //  'C'opy
-            RemoveFocusFromAllPanelButtons(main_menu);
+            RemoveFocusFromAllPanelButtons(&TheMainMenu);
             EditCopy();
         } else if (key == KEY_P) { //  'P'aste
-            RemoveFocusFromAllPanelButtons(main_menu);
+            RemoveFocusFromAllPanelButtons(&TheMainMenu);
             EditPaste();
-        } else if (key == KEY_F) { //  'F'ind
-            RemoveFocusFromAllPanelButtons(main_menu);
+        } /*else if (key == KEY_F) { //  'F'ind
+            RemoveFocusFromAllPanelButtons(&TheMainMenu);
             EditFind();
         } else if (key == KEY_R) { //  'R'eplace
-            RemoveFocusFromAllPanelButtons(main_menu);
+            RemoveFocusFromAllPanelButtons(&TheMainMenu);
             EditReplace();
-        }
-*/
+        }*/
     } else if (SubmenuShowing() == 3) { // Help
         if (key == KEY_A) {        //  'A'bout
-            RemoveFocusFromAllPanelButtons(main_menu);
+            RemoveFocusFromAllPanelButtons(&TheMainMenu);
             HelpAbout();
         }
     }
@@ -311,7 +308,7 @@ static bool ProcessKeysInPopup(panel_t * popup, popup_type_t popup_type,
         }
     } else if (key == KEY_TAB) {
         if (popup_type == FILEDIALOG) {
-            if (txtbox->in_focus) {
+            if (TheTextbox.in_focus) {
                 UpdateTextboxFocus(false);
                 UpdateButtonFocus(popup->btn_addr[0], true);
             } else {
@@ -352,7 +349,7 @@ static bool ProcessKeysInPopup(panel_t * popup, popup_type_t popup_type,
             button_t * btn = popup->btn_addr[i];
             if (btn != NULL && btn->in_focus) {
                 if (popup_type == SUBMENU) {
-                    RemoveFocusFromAllPanelButtons(main_menu);
+                    RemoveFocusFromAllPanelButtons(&TheMainMenu);
                     PanelButtonPressed(popup, i);
                 } else if (popup_type == MSGDIALOG) {
                     MsgDlgButtonPressed(get_popup(), i);
@@ -364,10 +361,10 @@ static bool ProcessKeysInPopup(panel_t * popup, popup_type_t popup_type,
         }
     } else if (key == KEY_ESC) {
         if (popup_type == SUBMENU) {
-                RemoveFocusFromAllPanelButtons(main_menu);
+                RemoveFocusFromAllPanelButtons(&TheMainMenu);
                 DeletePanel(popup);
         }
-    } else if (popup_type == FILEDIALOG && txtbox->in_focus) {
+    } else if (popup_type == FILEDIALOG && TheTextbox.in_focus) {
         if (key == KEY_BACKSPACE || key == KEY_DELETE
                                     || (key == KEY_KPDOT && !(key_modes & NUMLK_MASK))) {
             DeleteCharFromFilename();
@@ -380,25 +377,11 @@ static bool ProcessKeysInPopup(panel_t * popup, popup_type_t popup_type,
 
 // ----------------------------------------------------------------------------
 // ----------------------------------------------------------------------------
-static void MarkAllTextboxRowsDirty(void)
-{
-    uint8_t r;
-    textbox_t * txtbox = GetTextbox();
-    for (r = 0; r < txtbox->h; r++) {
-        txtbox->row_dirty[r] = true;
-    }
-}
-
-// ----------------------------------------------------------------------------
-// ----------------------------------------------------------------------------
 static bool ProcessKeysInMainTextbox(uint8_t key_modes, uint8_t key)
 {
     uint16_t r;
     uint8_t i, n;
     bool retval = true;
-    doc_t * doc = GetDoc();
-    textbox_t * txtbox = GetTextbox();
-    panel_t * main_menu = get_main_menu();
     if ((key_modes & CTRL_MASK)>0) { // Can use Ctrl+... accelerator keys
         if (key == KEY_O) { // File 'O'pen
             FileOpen();
@@ -406,143 +389,181 @@ static bool ProcessKeysInMainTextbox(uint8_t key_modes, uint8_t key)
             ((key_modes & SHIFT_MASK)>0) ? FileSaveAs() : FileSave();
         } else if (key == KEY_Q) { // File Exit ('Q'uit)
             FileExit();
-/*
         } else if (key == KEY_X) { // Edit Cut
             EditCut();
         } else if (key == KEY_C) { // Edit Copy
             EditCopy();
         } else if (key == KEY_V) { // Edit Paste
             EditPaste();
-        } else if (key == KEY_F) { // Edit Find
+        } /*else if (key == KEY_F) { // Edit Find
             EditFind();
         } else if (key == KEY_H) { // Edit Replace
             EditReplace();
-*/
-        }
+        }*/
     } else if (((key_modes & ALT_MASK)>0)) { // open main menu submenus
         if (key == KEY_F) { // 'F'ile
             CloseAnyPopupMenu();
-            RemoveFocusFromAllPanelButtons(main_menu);
-            UpdateButtonFocus(main_menu->btn_addr[0], true);
+            RemoveFocusFromAllPanelButtons(&TheMainMenu);
+            UpdateButtonFocus(TheMainMenu.btn_addr[0], true);
             ShowFileSubmenu();
-/*
         } else if (key == KEY_E) { // 'E'dit
             CloseAnyPopupMenu();
-            RemoveFocusFromAllPanelButtons(main_menu);
-            UpdateButtonFocus(main_menu->btn_addr[1], true);
+            RemoveFocusFromAllPanelButtons(&TheMainMenu);
+            UpdateButtonFocus(TheMainMenu.btn_addr[1], true);
             ShowEditSubmenu();
-*/
         } else if (key == KEY_H) { // 'H'elp
             CloseAnyPopupMenu();
-            RemoveFocusFromAllPanelButtons(main_menu);
-            UpdateButtonFocus(main_menu->btn_addr[2], true);
+            RemoveFocusFromAllPanelButtons(&TheMainMenu);
+            UpdateButtonFocus(TheMainMenu.btn_addr[2], true);
             ShowHelpSubmenu();
         }
     } else if (key == KEY_UP || (key == KEY_KP8 && !(key_modes & NUMLK_MASK))) {
-        if (doc->cursor_r > 0) { // room to move up
+        if (TheDoc.cursor_r > 0) { // room to move up
             // if the cursor is at top of display, scroll by adjusting doc offset
-            if (doc->cursor_r-1 < doc->offset_r) {
-                MarkAllTextboxRowsDirty();
-                doc->offset_r--;
+            if (TheDoc.cursor_r-1 < TheDoc.offset_r) {
+                SetAllTextboxRowsDirty();
+                TheDoc.offset_r--;
             }
-            doc->cursor_r -= 1;
+            TheDoc.cursor_r -= 1;
+            if ((key_modes & SHIFT_MASK)>0) {
+                MarkText();
+                TheTextbox.row_dirty[TheDoc.cursor_r-TheDoc.offset_r] = true;
+                TheTextbox.row_dirty[TheDoc.cursor_r-TheDoc.offset_r+1] = true;
+            } else {
+                ClearMarkedText();
+            }
             UpdateCursor();
         }
     } else if (key == KEY_DOWN || (key == KEY_KP2 && !(key_modes & NUMLK_MASK))) {
-        if (doc->cursor_r < doc->last_row) { // room to move down
+        if (TheDoc.cursor_r < TheDoc.last_row) { // room to move down
             // if the cursor is at bottom of display, scroll by adjusting doc offset
-            if (doc->cursor_r+1 > txtbox->h-1+doc->offset_r) {
-                MarkAllTextboxRowsDirty();
-                doc->offset_r++;
+            if (TheDoc.cursor_r+1 > TheTextbox.h-1+TheDoc.offset_r) {
+                SetAllTextboxRowsDirty();
+                TheDoc.offset_r++;
             }
-            doc->cursor_r += 1;
+            TheDoc.cursor_r += 1;
+            if ((key_modes & SHIFT_MASK)>0) {
+                MarkText();
+                TheTextbox.row_dirty[TheDoc.cursor_r-TheDoc.offset_r] = true;
+                TheTextbox.row_dirty[TheDoc.cursor_r-TheDoc.offset_r-1] = true;
+            } else {
+                ClearMarkedText();
+            }
             UpdateCursor();
         }
     } else if (key == KEY_LEFT || (key == KEY_KP4 && !(key_modes & NUMLK_MASK))) {
-        if (doc->cursor_c > 0) { // room to move left
-            doc->cursor_c -= 1;
+        if (TheDoc.cursor_c > 0) { // room to move left
+            TheDoc.cursor_c -= 1;
+            if ((key_modes & SHIFT_MASK)>0) {
+                MarkText();
+                TheTextbox.row_dirty[TheDoc.cursor_r-TheDoc.offset_r] = true;
+            } else {
+                ClearMarkedText();
+            }
             UpdateCursor();
         }
     } else if (key == KEY_RIGHT || (key == KEY_KP6 && !(key_modes & NUMLK_MASK))) {
-        if (doc->cursor_c < doc->rows[doc->cursor_r].len) { // room to move right
-            doc->cursor_c += 1;
+        if (TheDoc.cursor_c < TheDoc.rows[TheDoc.cursor_r].len) { // room to move right
+            TheDoc.cursor_c += 1;
+            if ((key_modes & SHIFT_MASK)>0) {
+                MarkText();
+                TheTextbox.row_dirty[TheDoc.cursor_r-TheDoc.offset_r] = true;
+            } else {
+                ClearMarkedText();
+            }
             UpdateCursor();
         }
     } else if (key == KEY_HOME || (key == KEY_KP7 && !(key_modes & NUMLK_MASK))) {
-        doc->cursor_c = 0;
+        TheDoc.cursor_c = 0;
+        if ((key_modes & SHIFT_MASK)>0) {
+            MarkText();
+            TheTextbox.row_dirty[TheDoc.cursor_r-TheDoc.offset_r] = true;
+        } else {
+            ClearMarkedText();
+        }
         UpdateCursor();
     } else if (key == KEY_END || (key == KEY_KP1 && !(key_modes & NUMLK_MASK))) {
-        doc->cursor_c = doc->rows[doc->cursor_r].len;
+        TheDoc.cursor_c = TheDoc.rows[TheDoc.cursor_r].len;
+        if ((key_modes & SHIFT_MASK)>0) {
+            MarkText();
+            TheTextbox.row_dirty[TheDoc.cursor_r-TheDoc.offset_r] = true;
+        } else {
+            ClearMarkedText();
+        }
         UpdateCursor();
     } else if (key == KEY_PAGEUP || (key == KEY_KP9 && !(key_modes & NUMLK_MASK))) {
-        uint16_t old_offset = doc->offset_r;
-        int16_t new_cursor_r = (int16_t)doc->cursor_r - (int16_t)(txtbox->h-1);
+        uint16_t old_offset = TheDoc.offset_r;
+        int16_t new_cursor_r = (int16_t)TheDoc.cursor_r - (int16_t)(TheTextbox.h-1);
         new_cursor_r = (new_cursor_r >= 0) ? new_cursor_r : 0;
-        if (doc->offset_r == 0 ||
+        if (TheDoc.offset_r == 0 ||
             new_cursor_r == 0 ||
-            doc->offset_r == new_cursor_r ) {
-            doc->cursor_r = new_cursor_r;
-            doc->offset_r = new_cursor_r;
+            TheDoc.offset_r == new_cursor_r ) {
+            TheDoc.cursor_r = new_cursor_r;
+            TheDoc.offset_r = new_cursor_r;
         } else { // shift offset a full screen height
-            doc->cursor_r = new_cursor_r;
-            doc->offset_r -= (txtbox->h-1);
+            TheDoc.cursor_r = new_cursor_r;
+            TheDoc.offset_r -= (TheTextbox.h-1);
         }
-        MarkAllTextboxRowsDirty();
+        ClearMarkedText();
+        SetAllTextboxRowsDirty();
         UpdateCursor();
     } else if (key == KEY_PAGEDOWN || (key == KEY_KP3 && !(key_modes & NUMLK_MASK))) {
-        uint16_t old_offset = doc->offset_r;
-        uint16_t old_offset_to_bottom = doc->offset_r + (txtbox->h-1);
-        uint16_t new_cursor_r = doc->cursor_r + (txtbox->h-1);
-        new_cursor_r = (new_cursor_r < doc->last_row) ? new_cursor_r : doc->last_row;
+        uint16_t old_offset = TheDoc.offset_r;
+        uint16_t old_offset_to_bottom = TheDoc.offset_r + (TheTextbox.h-1);
+        uint16_t new_cursor_r = TheDoc.cursor_r + (TheTextbox.h-1);
+        new_cursor_r = (new_cursor_r < TheDoc.last_row) ? new_cursor_r : TheDoc.last_row;
         new_cursor_r = (new_cursor_r < DOC_ROWS-1) ? new_cursor_r : DOC_ROWS-1;
         if (old_offset_to_bottom >= new_cursor_r)  { // no scroll
-            doc->cursor_r = new_cursor_r;
+            TheDoc.cursor_r = new_cursor_r;
         } else { // shift offset a full screen height
-            doc->cursor_r = new_cursor_r;
-            doc->offset_r += (txtbox->h-1);
+            TheDoc.cursor_r = new_cursor_r;
+            TheDoc.offset_r += (TheTextbox.h-1);
         }
-        MarkAllTextboxRowsDirty();
+        ClearMarkedText();
+        SetAllTextboxRowsDirty();
         UpdateCursor();
     } else if (key == KEY_TAB) {
-        if ((key_modes & OVRWRT_MASK)==0) { // insert mode only
-            if ((key_modes & SHIFT_MASK) == 0) { // shift right
-                n = TABSIZE - doc->cursor_c % TABSIZE;
-                if (doc->rows[doc->cursor_r].len+n < DOC_COLS) { // room to move right?
-                    for (i = 0; i < n; i++) {
-                        AddChar(HID2ASCII(key_modes, KEY_SPACE), true);
-                    }
-                    txtbox->row_dirty[doc->cursor_r - doc->offset_r] = true;
-                } else {
-                    UpdateStatusBarMsg("Maximum line length exceeded!", STATUS_WARNING);
+        ClearMarkedText();
+        if ((key_modes & SHIFT_MASK) == 0) { // shift right
+            n = TABSIZE - TheDoc.cursor_c % TABSIZE;
+            if (TheDoc.rows[TheDoc.cursor_r].len+n < DOC_COLS) { // room to move right?
+                for (i = 0; i < n; i++) {
+                    AddChar(HID2ASCII(key_modes, KEY_SPACE));
                 }
-            } else { // shift left
-
+                TheTextbox.row_dirty[TheDoc.cursor_r - TheDoc.offset_r] = true;
+            } else {
+                UpdateStatusBarMsg("Maximum line length exceeded!", STATUS_WARNING);
             }
+        } else { // shift left
+
         }
     } else if (key == KEY_ENTER || key == KEY_KPENTER) {
+        ClearMarkedText();
         if(AddNewLine()) {
-            MarkAllTextboxRowsDirty();
+            SetAllTextboxRowsDirty();
         }
     } else if (key == KEY_ESC) {
+        ClearMarkedText();
         // no action?
     } else if (key == KEY_BACKSPACE || key == KEY_DELETE
                                     || (key == KEY_KPDOT && !(key_modes & NUMLK_MASK))) {
-        bool row_deleted = ((key == KEY_BACKSPACE && doc->cursor_c == 0) ||
-                            (key != KEY_BACKSPACE && doc->cursor_c == doc->rows[doc->cursor_r].len));
+        bool row_deleted = ((key == KEY_BACKSPACE && TheDoc.cursor_c == 0) ||
+                            (key != KEY_BACKSPACE && TheDoc.cursor_c == TheDoc.rows[TheDoc.cursor_r].len));
+        ClearMarkedText();
         DeleteChar(key == KEY_BACKSPACE);
         // did operation delete a row?
         if (row_deleted) {
-            for (r = doc->cursor_r - doc->offset_r; r < txtbox->h; r++) {
-                txtbox->row_dirty[r] = true;
+            for (r = TheDoc.cursor_r - TheDoc.offset_r; r < TheTextbox.h; r++) {
+                TheTextbox.row_dirty[r] = true;
             }
         } else { // only current row is affected
-            txtbox->row_dirty[doc->cursor_r - doc->offset_r] = true;
+            TheTextbox.row_dirty[TheDoc.cursor_r - TheDoc.offset_r] = true;
         }
     } else {
-        if (((key_modes & OVRWRT_MASK) && doc->cursor_c < DOC_COLS-1) ||
-            doc->rows[doc->cursor_r].len+1 < DOC_COLS) { // room to move right?
-            AddChar(HID2ASCII(key_modes, key), !(key_modes & OVRWRT_MASK));
-            txtbox->row_dirty[doc->cursor_r - doc->offset_r] = true;
+        ClearMarkedText();
+        if (TheDoc.rows[TheDoc.cursor_r].len+1 < DOC_COLS) { // room to move right?
+            AddChar(HID2ASCII(key_modes, key));
+            TheTextbox.row_dirty[TheDoc.cursor_r - TheDoc.offset_r] = true;
         } else {
             UpdateStatusBarMsg("Maximum line length exceeded!", STATUS_WARNING);
         }
@@ -616,10 +637,9 @@ bool HandleKeys()
                         keybuf_tail = ((keybuf_tail+1) < KEYBUF_SIZE) ? keybuf_tail+1 : 0;
                     }
 /*
-                    printf("modes: %c%c%c%c%c%c%c key: 0x%02x %s\n",
+                    printf("modes: %c%c%c%c%c%c key: 0x%02x %s\n",
                             ((mode_keys&NUMLK_MASK)>0)?'#':'_',
                             ((mode_keys&CAPSLK_MASK)>0)?'^':'_',
-                            ((mode_keys&OVRWRT_MASK)>0)?'O':'_',
                             ((mode_keys&META_MASK)>0)?'M':'_',
                             ((mode_keys&ALT_MASK)>0)?'A':'_',
                             ((mode_keys&CTRL_MASK)>0)?'C':'_',

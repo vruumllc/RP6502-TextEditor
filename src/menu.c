@@ -16,75 +16,47 @@
 #include "menu.h"
 
 static panel_t * FileSubmenu = NULL;
-//static panel_t * EditSubmenu = NULL;
+static panel_t * EditSubmenu = NULL;
 static panel_t * HelpSubmenu = NULL;
 
-static panel_t MainMenuPanel;
+panel_t TheMainMenu;
 
 // ---------------------------------------------------------------------------
 // ---------------------------------------------------------------------------
 bool InitMainMenu(void)
 {
-    if (get_main_menu() == NULL) {
-        uint8_t i, c, start;
-        // Init Main Menu panel parameters
-        MainMenuPanel.panel_type = NO_POPUP_TYPE;
-        MainMenuPanel.r = 0;
-        MainMenuPanel.c = 0;
-        MainMenuPanel.w = 80;
-        MainMenuPanel.h = 1;
-        MainMenuPanel.bg = DARK_BLUE;
-        MainMenuPanel.fg = LIGHT_GRAY;
-        MainMenuPanel.btn_layout = HORZ;
+    uint8_t i, c, start;
+    // Init Main Menu panel parameters
+    TheMainMenu.panel_type = NO_POPUP_TYPE;
+    TheMainMenu.r = 0;
+    TheMainMenu.c = 0;
+    TheMainMenu.w = 80;
+    TheMainMenu.h = 1;
+    TheMainMenu.bg = DARK_BLUE;
+    TheMainMenu.fg = LIGHT_GRAY;
+    TheMainMenu.btn_layout = HORZ;
 
-        // Create the buttons. We will use local routines, not actions, for ButtonPressed()
-        if (AddButtonToPanel(&MainMenuPanel, "File", 0, DARK_BLUE, LIGHT_GRAY, BLUE, WHITE, CYAN, NULL) &&
-//            AddButtonToPanel(&MainMenuPanel, "Edit", 0, DARK_BLUE, LIGHT_GRAY, BLUE, WHITE, CYAN, NULL) &&
-            AddButtonToPanel(&MainMenuPanel, "Help", 0, DARK_BLUE, LIGHT_GRAY, BLUE, WHITE, CYAN, NULL)    ) {
-            set_main_menu(&MainMenuPanel);
-        } else {
-            DeleteMainMenu();
-            return false;
-        }
-
-        // draw Main Menu background
-        for (c = 0; c < canvas_cols(); c++) {
-            DrawChar(0, c, ' ', MainMenuPanel.bg, MainMenuPanel.fg);
-        }
-
-        // draw the buttons
-        start = 0;
-        for (i = 0; i < MainMenuPanel.num_btns; i++) {
-            ShowButton(MainMenuPanel.btn_addr[i], MainMenuPanel.r, MainMenuPanel.c + start);
-            start += MainMenuPanel.btn_addr[i]->w;
-        }
+    // Create the buttons. We will use local routines, not actions, for ButtonPressed()
+    if (AddButtonToPanel(&TheMainMenu, "File", 0, DARK_BLUE, LIGHT_GRAY, BLUE, WHITE, CYAN, NULL) &&
+        AddButtonToPanel(&TheMainMenu, "Edit", 0, DARK_BLUE, LIGHT_GRAY, BLUE, WHITE, CYAN, NULL) &&
+        AddButtonToPanel(&TheMainMenu, "Help", 0, DARK_BLUE, LIGHT_GRAY, BLUE, WHITE, CYAN, NULL)    ) {
+    } else {
+        return false;
     }
+
+    // draw Main Menu background
+    for (c = 0; c < canvas_cols(); c++) {
+        DrawChar(0, c, ' ', TheMainMenu.bg, TheMainMenu.fg);
+    }
+
+    // draw the buttons
+    start = 0;
+    for (i = 0; i < TheMainMenu.num_btns; i++) {
+        ShowButton(TheMainMenu.btn_addr[i], TheMainMenu.r, TheMainMenu.c + start);
+        start += TheMainMenu.btn_addr[i]->w;
+    }
+
     return true;
-}
-
-// ---------------------------------------------------------------------------
-// ---------------------------------------------------------------------------
-void DeleteMainMenu(void)
-{
-    if (get_main_menu() != NULL) {
-        button_t * pFile = MainMenuPanel.btn_addr[0];
-//        button_t * pEdit = MainMenuPanel.btn_addr[1];
-        button_t * pHelp = MainMenuPanel.btn_addr[2];
-
-        if (pFile != NULL) {
-            free(pFile);
-            MainMenuPanel.btn_addr[0] = NULL;
-        }
-//        if (pEdit != NULL) {
-//            free(pEdit);
-//            MainMenuPanel.btn_addr[1] = NULL;
-//        }
-        if (pHelp != NULL) {
-            free(pHelp);
-            MainMenuPanel.btn_addr[2] = NULL;
-        }
-        set_main_menu(NULL);
-    }
 }
 
 // ---------------------------------------------------------------------------
@@ -111,23 +83,23 @@ static bool InitFileSubmenu(void)
     }
     return false;
 }
-/*
+
 // ---------------------------------------------------------------------------
 // ---------------------------------------------------------------------------
 static bool InitEditSubmenu(void)
 {
-    EditSubmenu = NewPanel(SUBMENU, VERT, 16, 5, BLUE, WHITE );
+    EditSubmenu = NewPanel(SUBMENU, VERT, 16, 3/*5*/, BLUE, WHITE );
     if (EditSubmenu != NULL) {
         if (AddButtonToPanel(EditSubmenu, "Cut     Ctrl+X", 2,
                              BLUE, WHITE, DARK_CYAN, WHITE, CYAN, EditCut) &&
             AddButtonToPanel(EditSubmenu, "Copy    Ctrl+C", 0,
                              BLUE, WHITE, DARK_CYAN, WHITE, CYAN, EditCopy) &&
             AddButtonToPanel(EditSubmenu, "Paste   Ctrl+V", 0,
-                             BLUE, WHITE, DARK_CYAN, WHITE, CYAN, EditPaste) &&
+                             BLUE, WHITE, DARK_CYAN, WHITE, CYAN, EditPaste) /*&&
             AddButtonToPanel(EditSubmenu, "Find    Ctrl+F", 0,
                              BLUE, WHITE, DARK_CYAN, WHITE, CYAN, EditFind) &&
             AddButtonToPanel(EditSubmenu, "Replace Ctrl+H", 0,
-                             BLUE, WHITE, DARK_CYAN, WHITE, CYAN, EditReplace) ) {
+                             BLUE, WHITE, DARK_CYAN, WHITE, CYAN, EditReplace) */) {
             return true;
         } else {
             DeletePanel(EditSubmenu);
@@ -136,7 +108,7 @@ static bool InitEditSubmenu(void)
     }
     return false;
 }
-*/
+
 // ---------------------------------------------------------------------------
 // ---------------------------------------------------------------------------
 static bool InitHelpSubmenu(void)
@@ -168,7 +140,7 @@ void ShowFileSubmenu(void)
         ShowPanel(FileSubmenu, 1, 1);
     }
 }
-/*
+
 // ---------------------------------------------------------------------------
 // Show Edit Submenu
 // ---------------------------------------------------------------------------
@@ -182,7 +154,7 @@ void ShowEditSubmenu(void)
         ShowPanel(EditSubmenu, 1, 8);
     }
 }
-*/
+
 // ---------------------------------------------------------------------------
 // Show Help Submenu
 // ---------------------------------------------------------------------------
@@ -204,8 +176,8 @@ void MainMenuButtonPressed(uint8_t index)
 {
     switch (index) {
         case 0: ShowFileSubmenu(); break;
-//        case 1: ShowEditSubmenu(); break;
-        case 1/*2*/: ShowHelpSubmenu(); break;
+        case 1: ShowEditSubmenu(); break;
+        case 2: ShowHelpSubmenu(); break;
     }
 }
 
@@ -214,8 +186,8 @@ void MainMenuButtonPressed(uint8_t index)
 bool IsMainMenuButtonPressed(int16_t row, int16_t col)
 {
     uint8_t i;
-    for (i = 0; i < MainMenuPanel.num_btns; i++) {
-        button_t * btn = MainMenuPanel.btn_addr[i];
+    for (i = 0; i < TheMainMenu.num_btns; i++) {
+        button_t * btn = TheMainMenu.btn_addr[i];
         if (btn != NULL) {
             if (row == btn->r &&
                 col >= btn->c && col < (btn->c + btn->w)) {
@@ -232,8 +204,8 @@ bool IsMainMenuButtonPressed(int16_t row, int16_t col)
 uint8_t SubmenuShowing(void)
 {
     uint8_t i;
-    for (i = 0; i < MainMenuPanel.num_btns; i++) {
-        if (MainMenuPanel.btn_addr[i]->in_focus) {
+    for (i = 0; i < TheMainMenu.num_btns; i++) {
+        if (TheMainMenu.btn_addr[i]->in_focus) {
             return i+1;
         }
     }

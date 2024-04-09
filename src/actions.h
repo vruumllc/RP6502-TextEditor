@@ -15,10 +15,11 @@ void FileClose(void);
 
 void FileExit(void);
 void FileExitYes(void);
-/*
+
 void EditCut(void);
 void EditCopy(void);
 void EditPaste(void);
+/*
 void EditFind(void);
 void EditReplace(void);
 */
